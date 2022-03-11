@@ -68,43 +68,17 @@ if __name__=="__main__":
     # print(list_users, 'length list remaining', len(list_users))
     list_users_tw =['from:' + user for user in list_users]
 
-    # tic()
-    #
-    # for query in list_users_tw :
-    #
-    #     collect_twitter_data(
-    #         query = query,
-    #         start_time = '2020-08-17T23:00:00Z',
-    #         end_time = '2021-08-17T23:00:05Z',
-    #         #end_time = df['created_at'].iloc[l-1],
-    #         bearer_token= os.getenv('TWITTER_TOKEN'),
-    #         filename = os.path.join('.', 'data', 'twitter_data_climate'  + '.csv'),
-    #         )
-    #     sleep(3)
-    # toc()
-
     tic()
+
     for query in list_users_tw :
 
         collect_twitter_data(
             query = query,
-            start_time = '2021-10-31T01:00:00Z',
-            end_time = '2021-11-12T23:00:05Z',
-            #end_time = '2021-11-09T16:52:09.000Z',
+            start_time = '2020-08-17T23:00:00Z',
+            end_time = '2021-08-17T23:00:05Z',
+            #end_time = df['created_at'].iloc[l-1],
             bearer_token= os.getenv('TWITTER_TOKEN'),
-            filename = os.path.join('.', 'data', 'twitter_data_climate_users_cop26'  + '.csv'),
+            filename = os.path.join('.', 'data', 'twitter_data_climate'  + '.csv'),
             )
         sleep(3)
     toc()
-
-    # df = import_data('twitter_COP26.csv')
-    # print(df['created_at'].min())
-
-    # collect_twitter_data(
-    #     query = 'COP26 -is:retweet',
-    #     start_time = '2021-10-31T01:00:00Z',
-    #     #end_time = '2021-11-12T23:00:05Z',
-    #     end_time = '2021-11-01T00:13:40Z',
-    #     bearer_token= os.getenv('TWITTER_TOKEN'),
-    #     filename = os.path.join('.', 'data', 'twitter_COP26'  + '.csv'),
-    #     )
