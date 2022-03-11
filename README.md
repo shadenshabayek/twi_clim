@@ -1,8 +1,8 @@
-#Code for the project: twi_clim
+##Code for the project: twi_clim
 
 ## Building Twitter users dataset:
 
-###To get error report for the Desmog urls:
+To get error report for the Desmog urls:
 
 Step 1:
 
