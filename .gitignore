@@ -24,5 +24,3 @@ __pycache__
 *.bbl
 
 *.mod
-
-create_twitter_users_lists.py 
