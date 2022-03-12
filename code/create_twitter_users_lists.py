@@ -4,6 +4,7 @@ import numpy as np
 import os
 
 from dotenv import load_dotenv
+from datetime import date
 from utils import (get_user_metrics,
                     import_data,
                     import_google_sheet,
@@ -27,47 +28,65 @@ def get_urls_desmog_list():
     dict = {
     "\.": "",
     "(deceased)": "",
-    "sir\-": "",
-    "lord\-": "",
-    " ": "-",
+    "sir ": "",
+    "lord ": "",
+    #" a ": " ",
+    #" w ": " ",
+    ":": " ",
     "\’": "-",
     "\,": "",
-    "\:": "",
     "è": "-",
     "é": "e",
     "ö": "o",
     "ó": "o",
     "ø": "o",
     "á": "a",
-    "år": "a",
+    "å": "a",
     "ü": "u",
     "\(": "",
-    "\)": ""
+    "\)": "",
+    "douglass": "douglas",
+    #" ": "-",
      }
 
     df['user'] = df['user'].replace(dict, regex=True)
+
     df['user'] = df['user'].replace("patrick-jeff-condon", "jeff-condon", regex=True)
     df['user'] = df['user'].replace("hendrik-henk-tennekes", "hendrik-tennekes", regex=True)
     df['user'] = df['user'].replace("timothy-f-ball-tim-ball", "tim-ball", regex=True)
     df['user'] = df['user'].replace("the-thirteen-foundation", "thirteen-foundation", regex=True)
-    df['user'] = df['user'].replace("william-a-dunn", "william-dunn", regex=True)
     df['user'] = df['user'].replace("hugh-w-ellsaesser", "hugh-ellsaesser", regex=True)
     df['user'] = df['user'].replace("a-alan-moghissi", "alan-moghissi", regex=True)
+    df['user'] = df['user'].replace("harry-na-priem", "harry-n-a-priem", regex=True)
+    df['user'] = df['user'].replace("james-a-wanliss", "james-wanliss", regex=True)
+    df['user'] = df['user'].replace("james-a-peden", "james-peden", regex=True)
+    df['user'] = df['user'].replace("william-a-dunn", "william-dunn", regex=True)
+    #df['user'] = df['user'].replace("life:powered", "life-powered", regex=True)
+    df['user'] = df['user'].replace("david-douglass", "david-douglas", regex=True)
+    df['user'] = df['user'].replace("gerrit-van-der-lingen", "gerrit-j-van-der-lingen", regex=True)
+    df['user'] = df['user'].replace("roger-a-pielke-sr", "roger-pielke-sr", regex=True)
+    df['user'] = df['user'].replace("frederick-seitz", "frederick-seitz-dead", regex=True)
+    #df['user'] = df['user'].replace("sir-frederick-seitz", "frederick-seitz", regex=True)
+    #df['user'] = df['user'].replace("lord-bernard-donoughue", "bernard-donoughue", regex=True)
+    #df['user'] = df['user'].replace("sir-christopher-chope", "christopher-chope", regex=True)
+
+    df['user'] = df['user'].str.strip()
+    df['user'] = df['user'].replace(" ", "-", regex=True)
 
     list_users = df['user'].tolist()
     list =['https://www.desmog.com/' + user for user in list_users]
 
     df1 = pd.DataFrame(list, columns = ['url_desmog'])
 
-    #save_data(df1, 'url_desmog_climate.csv', 0)
+    save_data(df1, 'url_desmog_climate_2022_03_11_2.csv', 0)
+
     return df1
 
-def check_for_errors_urls_desmog():
 
-    
 def get_twitter_handles_desmog_climate():
 
-    df = import_data('url_desmog_climate.csv')
+    #df = get_urls_desmog_list()
+    df = import_data('url_desmog_climate_2022_03_11.csv')
 
     list_url = df['url_desmog'].tolist()
 
@@ -100,9 +119,11 @@ def get_twitter_handles_desmog_climate():
     df1['twitter_handle'] = list_handles
 
     #append = 1
-    #append = 0
+    append = 0
 
-    #save_data(df1, 'tw_handles_climate.csv', append)
+    timestr = time.strftime("%Y_%m_%d")
+    filename = 'tw_handles_climate_' + timestr + '.csv'
+    save_data(df1, 'tw_handles_climate.csv', append)
 
     return df1
 
@@ -257,4 +278,5 @@ if __name__ == '__main__':
 
     #get_users_followers()
     #get_list_activists()
-    get_twitter_handles_desmog_climate()
+    #get_twitter_handles_desmog_climate()
+    get_urls_desmog_list()

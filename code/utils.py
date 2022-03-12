@@ -435,7 +435,7 @@ def save_figure(figure_name):
 
     figure_path = os.path.join('.', 'figure', figure_name)
     plt.savefig(figure_path, bbox_inches='tight')
-    print('The '{}' figure is saved.'.format(figure_name))
+    #print('The '{}' figure is saved.'.format(figure_name))
 
 def save_data(df, file_name, append):
 
@@ -446,7 +446,7 @@ def save_data(df, file_name, append):
     else:
         df.to_csv(file_path, index=False)
 
-    print(' '{}' is saved.'.format(file_name))
+    #print(' '{}' is saved.'.format(file_name))
 
 ''' Use google sheet via the Google sheet API '''
 
