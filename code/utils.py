@@ -54,48 +54,52 @@ def connect_to_endpoint_historical_search(bearer_token, query, start_time, end_t
 
         return response.json()
 
-def write_results(json_response, filename, query):
+def write_results(json_response, filename, query, list_individuals):
 
-    with open(filename, 'a+') as tweet_file:
+    with open(filename, "a+") as tweet_file:
 
         writer = csv.DictWriter(tweet_file,
-                                ['query',
-                                'type_of_tweet',
-                                'referenced_tweet_id',
-                                 'id',
-                                 'author_id',
-                                 'username',
-                                 'name',
-                                 'created_at',
-                                 'text',
-                                 'possibly_sensitive',
-                                 'retweet_count',
-                                 'reply_count',
-                                 'like_count',
-                                 'hashtags',
-                                 'in_reply_to_user_id',
-                                 'in_reply_to_username',
-                                 'quoted_user_id',
-                                 'quoted_username',
-                                 'retweeted_username',
-                                 'mentions_username',
-                                 'lang',
-                                 'expanded_urls',
-                                 'domain_name',
-                                 'theme',
-                                 'theme_description',
-                                 'user_created_at',
-                                 'user_profile_description',
-                                 'user_location',
-                                 'followers_count',
-                                 'following_count',
-                                 'tweet_count',
-                                 'listed_count',
-                                 'collection_date',
-                                 'collection_method'],
+                                ["query",
+                                "type_of_tweet",
+                                "referenced_tweet_id",
+                                 "id",
+                                 "author_id",
+                                 "username",
+                                 "name",
+                                 "created_at",
+                                 "text",
+                                 "possibly_sensitive",
+                                 "retweet_count",
+                                 "reply_count",
+                                 "like_count",
+                                 "hashtags",
+                                 "in_reply_to_user_id",
+                                 "in_reply_to_username",
+                                 "in_reply_to_username_within_list",
+                                 "quoted_user_id",
+                                 "quoted_username",
+                                 "quoted_username_within_list",
+                                 "retweeted_username",
+                                 "retweeted_username_within_list",
+                                 "mentions_username",
+                                 "mentions_username_within_list",
+                                 "lang",
+                                 "expanded_urls",
+                                 "domain_name",
+                                 "user_created_at",
+                                 "user_profile_description",
+                                 "user_location",
+                                 #"user_expanded_url",
+                                 "followers_count",
+                                 "following_count",
+                                 "tweet_count",
+                                 "listed_count",
+                                 "collection_date",
+                                 "collection_method"],
                                 extrasaction='ignore')
 
         if 'data' and 'includes' in json_response:
+
             for tweet in json_response['data']:
 
                 user_index = {}
@@ -103,9 +107,11 @@ def write_results(json_response, filename, query):
                 for user in json_response['includes']['users']:
 
                     if 'id' in user.keys():
+
                         user_index[user['id']] = user
 
                         if tweet['author_id'] == user['id']:
+
                             tweet['username'] = user['username']
                             tweet['name'] = user['name']
                             tweet['user_created_at'] = user['created_at']
@@ -117,86 +123,112 @@ def write_results(json_response, filename, query):
                             if 'description' in user.keys():
                                 tweet['user_profile_description']= user ['description']
 
-                            if 'location' in user.keys():
+                            if "location" in user.keys():
                                 tweet['user_location'] = user['location']
 
                         if 'in_reply_to_user_id' in tweet.keys():
+
                             if tweet['in_reply_to_user_id'] == user['id']:
+
                                 a = user['username'].lower()
+                                #print('in reply', a)
+
                                 tweet['in_reply_to_username'] = a
 
-                if 'context_annotations' in tweet:
-                    if 'domain' in tweet['context_annotations'][0]:
-                        tweet['theme']=tweet['context_annotations'][0]['domain']['name']
-                        if 'description' in tweet['context_annotations'][0]['domain']:
-                            tweet['theme_description']=tweet['context_annotations'][0]['domain']['description']
+                                if a in list_individuals:
+
+                                    tweet["in_reply_to_username_within_list"] = a
+
+                if "context_annotations" in tweet:
+                    if "domain" in tweet["context_annotations"][0]:
+                        tweet['theme']=tweet["context_annotations"][0]["domain"]["name"]
+                        if "description" in tweet["context_annotations"][0]["domain"]:
+                            tweet['theme_description']=tweet["context_annotations"][0]["domain"]['description']
                     else:
                         tweet['theme']=''
                         tweet['theme_description']=''
 
-                if 'entities' in tweet:
-                    if 'mentions' in tweet['entities']:
-                        l=len(tweet['entities']['mentions'])
+                if "entities" in tweet:
+
+                    if "mentions" in tweet["entities"]:
+
+                        l=len(tweet["entities"]['mentions'])
+
                         tweet['mentions_username'] = []
                         tweet['mentions_username_within_list'] =[]
 
                         for i in range(0,l):
 
-                            a = tweet['entities']['mentions'][i]['username']
+                            a = tweet["entities"]['mentions'][i]['username']
                             a = a.lower()
                             tweet['mentions_username'].append(a)
 
-
+                            if a in list_individuals:
+                                tweet['mentions_username_within_list'].append(a)
                     else:
                         tweet['mentions_username'] = []
                         tweet['mentions_username_within_list'] = []
 
-                    if 'urls' in tweet['entities']:
-                        lu=len(tweet['entities']['urls'])
+                    if "urls" in tweet["entities"]:
+
+                        lu=len(tweet["entities"]['urls'])
+
                         tweet['expanded_urls']=[]
                         tweet['domain_name']=[]
 
                         for i in range(0,lu):
 
-                            link = tweet['entities']['urls'][i]['expanded_url']
+                            link = tweet["entities"]['urls'][i]['expanded_url']
+                            #print (i,tweet["entities"]['urls'][i].keys())
 
-                            if len(link) < 30:
-                                if 'unwound_url' in tweet['entities']['urls'][i].keys():
-                                    b = tweet['entities']['urls'][i]['unwound_url']
-                                    c = get_domain_name(tweet['entities']['urls'][i]['unwound_url'])
+                            # if tweet['id'] == "1455491668728328192":
+                            #     print(json_response['data'])
 
-                                elif 'unwound_url' not in tweet['entities']['urls'][i].keys():
+                            if len(link) < 35:
+
+                                if 'unwound_url' in tweet["entities"]['urls'][i].keys():
+                                    b = tweet["entities"]['urls'][i]['unwound_url']
+                                    c = get_domain_name(tweet["entities"]['urls'][i]['unwound_url'])
+
+                                elif 'unwound_url' not in tweet["entities"]['urls'][i].keys():
+                                    #print('unwound not there!')
+                                    #print(tweet['id'])
                                     for result in multithreaded_resolve([link]):
-
                                         b = result.stack[-1].url
                                         c = get_domain_name(result.stack[-1].url)
 
+                                # tweet['expanded_urls'].append(b)
+                                # tweet['domain_name'].append(c)
+                                    # tweet['expanded_urls'].append(b)
+                                    # tweet['domain_name'].append(c)
+
                                 else:
-                                    b = tweet['entities']['urls'][i]['expanded_url']
-                                    c = get_domain_name(tweet['entities']['urls'][i]['expanded_url'])
+                                    b = tweet["entities"]['urls'][i]['expanded_url']
+                                    c = get_domain_name(tweet["entities"]['urls'][i]['expanded_url'])
 
                                 tweet['expanded_urls'].append(b)
                                 tweet['domain_name'].append(c)
 
 
                             else:
-                                d = tweet['entities']['urls'][i]['expanded_url']
-                                e = get_domain_name(tweet['entities']['urls'][i]['expanded_url'])
+                                d = tweet["entities"]['urls'][i]['expanded_url']
+                                e = get_domain_name(tweet["entities"]['urls'][i]['expanded_url'])
+
                                 tweet['expanded_urls'].append(d)
                                 tweet['domain_name'].append(e)
                     else:
                         tweet['expanded_urls'] = []
                         tweet['domain_name'] = []
 
-                    if 'hashtags' in tweet['entities']:
-                        l=len(tweet['entities']['hashtags'])
-                        tweet['hashtags'] = []
+                    if "hashtags" in tweet["entities"]:
+                        l=len(tweet["entities"]["hashtags"])
+                        tweet["hashtags"] = []
 
                         for i in range(0,l):
-                            a = tweet['entities']['hashtags'][i]['tag']
-                            tweet['hashtags'].append(a)
+                            a = tweet["entities"]["hashtags"][i]["tag"]
+                            tweet["hashtags"].append(a)
                     else:
-                        tweet['hashtags'] = []
+                        tweet["hashtags"] = []
                 else:
                     tweet['mentions_username'] = []
                     tweet['mentions_username_within_list'] =[]
@@ -204,78 +236,131 @@ def write_results(json_response, filename, query):
                     tweet['expanded_urls'] = []
                     tweet['domain_name'] = []
 
-                if 'referenced_tweets' in tweet.keys():
-                    tweet['type_of_tweet'] = tweet['referenced_tweets'][0]['type']
-                    tweet['referenced_tweet_id'] = tweet['referenced_tweets'][0]['id']
+                if "referenced_tweets" in tweet.keys():
 
-                    if (tweet['referenced_tweets'][0]['type'] == 'retweeted' or tweet['referenced_tweets'][0]['type'] == 'quoted' or tweet['referenced_tweets'][0]['type'] == 'replied_to'):
-                        if 'tweets' in json_response['includes']:
-                            for tw in json_response['includes']['tweets']:
+                    tweet["type_of_tweet"] = tweet["referenced_tweets"][0]["type"]
+                    tweet["referenced_tweet_id"] = tweet["referenced_tweets"][0]["id"]
 
-                                if tweet['referenced_tweets'][0]['id'] == tw['id'] :
-                                    tweet['retweet_count'] = tw['public_metrics']['retweet_count']
-                                    tweet['reply_count'] = tw['public_metrics']['reply_count']
-                                    tweet['like_count'] = tw['public_metrics']['like_count']
+                    if (tweet["referenced_tweets"][0]["type"] == "retweeted" or tweet["referenced_tweets"][0]["type"] == "quoted" or tweet["referenced_tweets"][0]["type"] == "replied_to"):
+
+                        if "tweets" in json_response["includes"]:
+
+                            for tw in json_response["includes"]["tweets"]:
+
+                                if tweet["referenced_tweets"][0]["id"] == tw["id"] :
+
+                                    tweet['retweet_count'] = tw["public_metrics"]["retweet_count"]
+                                    tweet['reply_count'] = tw["public_metrics"]["reply_count"]
+                                    tweet['like_count'] = tw["public_metrics"]["like_count"]
                                     tweet['possibly_sensitive'] = tw['possibly_sensitive']
                                     tweet['text'] = tw['text']
 
                                     if tweet['referenced_tweets'][0]['type'] == 'retweeted':
+
                                         if 'entities' in tweet :
+
                                             if 'mentions' in tweet['entities'].keys():
+
                                                 if tweet['entities']['mentions'][0]['id'] == tw['author_id'] :
+
                                                     a = tweet['entities']['mentions'][0]['username']
                                                     b = a.lower()
+
                                                     tweet['retweeted_username'] = b
 
+                                                    if b in list_individuals:
+
+                                                        tweet['retweeted_username_within_list'] = b
+
+                                    if tweet['referenced_tweets'][0]['type'] == 'replied_to':
+
+                                        if 'entities' in tweet :
+
+                                            if 'mentions' in tweet['entities'].keys():
+
+                                                if tweet['entities']['mentions'][0]['id'] == tweet['in_reply_to_user_id'] :
+
+                                                    a = tweet['entities']['mentions'][0]['username']
+                                                    b = a.lower()
+
+                                                    tweet['in_reply_to_username'] = b
+
+                                                    if b in list_individuals:
+
+                                                        tweet['in_reply_to_username_within_list'] = b
+
+
                                     if tweet['referenced_tweets'][0]['type'] == 'quoted':
+
                                         tweet['quoted_user_id'] = tw['author_id']
 
                                         if 'entities' in tweet.keys():
+
                                             if 'urls' in tweet['entities']:
+
                                                 l = len(tweet['entities']['urls'])
 
                                                 for i in range(0,l):
 
                                                     if 'expanded_url' in tweet['entities']['urls'][i].keys():
+
                                                         url = tweet['entities']['urls'][i]['expanded_url']
 
                                                         if tweet['referenced_tweets'][0]['id'] in url:
+
+                                                            #sprint(tweet['entities']['urls'][0]['expanded_url'])
                                                             if 'https://twitter.com/' in url:
+
                                                                 a = url.split('https://twitter.com/')[1]
                                                                 b = a.split('/status')[0].lower()
+
                                                                 tweet['quoted_username'] = b
 
+                                                                if b in list_individuals:
+
+                                                                    tweet['quoted_username_within_list'] = b
+
                                     if 'entities' in  tw.keys():
-                                        if 'urls' in tw['entities']:
-                                            lu=len(tw['entities']['urls'])
+
+                                        if "urls" in tw["entities"]:
+
+                                            lu=len(tw["entities"]['urls'])
+
                                             tweet['expanded_urls']=[]
                                             tweet['domain_name']=[]
 
                                             for i in range(0,lu):
 
-                                                link = tw['entities']['urls'][i]['expanded_url']
+                                                link = tw["entities"]['urls'][i]['expanded_url']
 
-                                                if len(link) < 30:
-                                                    if 'unwound_url' in tw['entities']['urls'][i].keys():
-                                                        b = tw['entities']['urls'][i]['unwound_url']
-                                                        c = get_domain_name(tw['entities']['urls'][i]['unwound_url'])
+                                                if len(link) < 35:
 
-                                                    elif 'unwound_url' not in tw['entities']['urls'][i].keys():
+                                                    if 'unwound_url' in tw["entities"]['urls'][i].keys():
+                                                        b = tw["entities"]['urls'][i]['unwound_url']
+                                                        c = get_domain_name(tw["entities"]['urls'][i]['unwound_url'])
+
+                                                    elif 'unwound_url' not in tw["entities"]['urls'][i].keys():
                                                         for result in multithreaded_resolve([link]):
-
                                                             b = result.stack[-1].url
                                                             c = get_domain_name(result.stack[-1].url)
 
-                                                    else:
-                                                        b = tw['entities']['urls'][i]['expanded_url']
-                                                        c = get_domain_name(tw['entities']['urls'][i]['expanded_url'])
+                                                    #tweet['expanded_urls'].append(b)
+                                                    #tweet['domain_name'].append(c)
 
-                                                    tweet['expanded_urls'].append(d)
-                                                    tweet['domain_name'].append(e)
+
+                                                        # tweet['expanded_urls'].append(b)
+                                                        # tweet['domain_name'].append(c)
+
+                                                    else:
+                                                        b = tw["entities"]['urls'][i]['expanded_url']
+                                                        c = get_domain_name(tw["entities"]['urls'][i]['expanded_url'])
+
+                                                    tweet['expanded_urls'].append(b)
+                                                    tweet['domain_name'].append(c)
 
                                                 else:
-                                                    d = tw['entities']['urls'][i]['expanded_url']
-                                                    e = get_domain_name(tw['entities']['urls'][i]['expanded_url'])
+                                                    d = tw["entities"]['urls'][i]['expanded_url']
+                                                    e = get_domain_name(tw["entities"]['urls'][i]['expanded_url'])
 
                                                     tweet['expanded_urls'].append(d)
                                                     tweet['domain_name'].append(e)
@@ -284,119 +369,147 @@ def write_results(json_response, filename, query):
                                             tweet['expanded_urls'] = []
                                             tweet['domain_name'] = []
 
-                                        if 'hashtags' in tw['entities']:
-                                            l=len(tw['entities']['hashtags'])
-                                            tweet['hashtags'] = []
+                                        if "hashtags" in tw["entities"]:
+                                            l=len(tw["entities"]["hashtags"])
+                                            tweet["hashtags"] = []
 
                                             for i in range(0,l):
-
-                                                a = tw['entities']['hashtags'][i]['tag']
-                                                tweet['hashtags'].append(a)
+                                                a = tw["entities"]["hashtags"][i]["tag"]
+                                                tweet["hashtags"].append(a)
                                         else:
-                                            tweet['hashtags'] = []
+                                            tweet["hashtags"] = []
 
-                                        if 'mentions' in tw['entities']:
-                                            l=len(tw['entities']['mentions'])
+                                        if "mentions" in tw["entities"]:
+
+                                            l=len(tw["entities"]['mentions'])
+                                            #tweet['mentions_username'] = []
+                                            #tweet['mentions_username_within_list'] =[]
 
                                             for i in range(0,l):
-
-                                                a = tw['entities']['mentions'][i]['username']
+                                                a = tw["entities"]['mentions'][i]['username']
                                                 a = a.lower()
                                                 tweet['mentions_username'].append(a)
 
+                                                if a in list_individuals:
+                                                    tweet['mentions_username_within_list'].append(a)
+                                        # else:
+                                        #     tweet['mentions_username'] = []
+                                        #     tweet['mentions_username_within_list'] = []
+
+                    # elif (tweet["referenced_tweets"][0]["type"] == "quoted" or tweet["referenced_tweets"][0]["type"] == "replied_to"):
+                    #     tweet['retweet_count'] = tweet["public_metrics"]["retweet_count"]
+                    #     tweet['reply_count'] = tweet["public_metrics"]["reply_count"]
+                    #     tweet['like_count'] = tweet["public_metrics"]["like_count"]
+
                 else:
-                    tweet['retweet_count'] = tweet['public_metrics']['retweet_count']
-                    tweet['reply_count'] = tweet['public_metrics']['reply_count']
-                    tweet['like_count'] = tweet['public_metrics']['like_count']
 
-                tweet['query'] = query
-                tweet['username'] = tweet['username'].lower()
+                    tweet['retweet_count'] = tweet["public_metrics"]["retweet_count"]
+                    tweet['reply_count'] = tweet["public_metrics"]["reply_count"]
+                    tweet['like_count'] = tweet["public_metrics"]["like_count"]
 
-                if len(tweet['mentions_username']) > 1:
-                    tweet['mentions_username'] = list(set(tweet['mentions_username']))
+                tweet["query"] = query
+                tweet["username"] = tweet["username"].lower()
 
-                timestr = time.strftime('%Y-%m-%d')
-                tweet['collection_date'] = timestr
-                tweet['collection_method'] = 'Twitter API V2'
+
+                if len(tweet["mentions_username"]) > 1:
+                    tweet["mentions_username"] = list(set(tweet["mentions_username"]))
+
+                if len(tweet["mentions_username_within_list"]) > 1:
+                    tweet["mentions_username_within_list"] = list(set(tweet["mentions_username_within_list"]))
+
+                timestr = time.strftime("%Y-%m-%d")
+                tweet["collection_date"] = timestr
+                tweet["collection_method"] = 'Twitter API V2'
 
                 writer.writerow(tweet)
 
         else:
-            #raise ValueError('User not found')
+            #raise ValueError("User not found")
             pass
 
-def get_next_token(query, token, count, filename, start_time, end_time, bearer_token):
-
+def get_next_token(list_individuals, query, token, count, filename, start_time, end_time, bearer_token):
 
     json_response = connect_to_endpoint_historical_search(bearer_token, query, start_time, end_time, token)
+
     result_count = json_response['meta']['result_count']
 
     if 'next_token' in json_response['meta']:
         sleep(3)
         next_token = json_response['meta']['next_token']
-
+        #print(next_token)
         if result_count is not None and result_count > 0:
+
             count += result_count
             print(count)
         #try:
-        write_results(json_response, filename)
+        write_results(json_response, filename, query, list_individuals)
         return next_token, count
     else:
-        write_results(json_response, filename)
+        write_results(json_response, filename, query, list_individuals)
         return None, count
 
-def collect_twitter_data(query, start_time, end_time, bearer_token, filename):
+def collect_twitter_data(list_individuals, query, start_time, end_time, bearer_token, filename):
 
     print(query)
+
     flag = True
     count = 0
     file_exists = os.path.isfile(filename)
 
-    with open(filename, 'a+') as tweet_file:
+    with open(filename, "a+") as tweet_file:
 
         writer = csv.DictWriter(tweet_file,
-                                ['type_of_tweet',
-                                 'id',
-                                 'author_id',
-                                 'username',
-                                 'name',
-                                 'created_at',
-                                 'text',
-                                 'possibly_sensitive',
-                                 'in_reply_to_user_id',
-                                 'mentions_username',
-                                 'retweet_count',
-                                 'reply_count',
-                                 'like_count',
-                                 'lang',
-                                 'expanded_urls',
-                                 'domain_name',
-                                 'theme',
-                                 'theme_description',
-                                 'user_created_at',
-                                 'user_profile_description',
-                                 'user_location',
-                                 'user_expanded_url',
-                                 'followers_count',
-                                 'following_count',
-                                 'tweet_count',
-                                 'listed_count'], extrasaction='ignore')
+                                ["query",
+                                "type_of_tweet",
+                                "referenced_tweet_id",
+                                 "id",
+                                 "author_id",
+                                 "username",
+                                 "name",
+                                 "created_at",
+                                 "text",
+                                 "possibly_sensitive",
+                                 "retweet_count",
+                                 "reply_count",
+                                 "like_count",
+                                 "hashtags",
+                                 "in_reply_to_user_id",
+                                 "in_reply_to_username",
+                                 "in_reply_to_username_within_list",
+                                 "quoted_user_id",
+                                 'quoted_username',
+                                 'quoted_username_within_list',
+                                 "retweeted_username",
+                                 "retweeted_username_within_list",
+                                 "mentions_username",
+                                 "mentions_username_within_list",
+                                 "lang",
+                                 "expanded_urls",
+                                 "domain_name",
+                                 "user_created_at",
+                                 "user_profile_description",
+                                 "user_location",
+                                 #"user_expanded_url",
+                                 "followers_count",
+                                 "following_count",
+                                 "tweet_count",
+                                 "listed_count",
+                                 "collection_date",
+                                 "collection_method"], extrasaction='ignore')
         if not file_exists:
             writer.writeheader()
 
     next_token = None
 
     while flag:
-        next_token, count = get_next_token(query, next_token, count, filename, start_time, end_time, bearer_token)
-
-        if count >= 1000000:
+        next_token, count = get_next_token(list_individuals, query, next_token, count, filename, start_time, end_time, bearer_token)
+        if count >= 2000000:
             break
-
         if next_token is None:
             flag = False
 
 
-    print('Total Tweet IDs saved: {}'.format(count))
+    print("Total Tweet IDs saved: {}".format(count))
 
 ''' General functions to save data and import it '''
 

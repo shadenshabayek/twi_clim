@@ -46,7 +46,7 @@ def get_urls_desmog_list():
     "\(": "",
     "\)": "",
     "douglass": "douglas",
-    #" ": "-",
+    " ": "-",
      }
 
     df['user'] = df['user'].replace(dict, regex=True)
@@ -66,29 +66,41 @@ def get_urls_desmog_list():
     df['user'] = df['user'].replace("gerrit-van-der-lingen", "gerrit-j-van-der-lingen", regex=True)
     df['user'] = df['user'].replace("roger-a-pielke-sr", "roger-pielke-sr", regex=True)
     df['user'] = df['user'].replace("frederick-seitz", "frederick-seitz-dead", regex=True)
-    #df['user'] = df['user'].replace("sir-frederick-seitz", "frederick-seitz", regex=True)
-    #df['user'] = df['user'].replace("lord-bernard-donoughue", "bernard-donoughue", regex=True)
-    #df['user'] = df['user'].replace("sir-christopher-chope", "christopher-chope", regex=True)
+    df['user'] = df['user'].replace("nigel-vinson", "lord-nigel-vinson", regex=True)
+    df['user'] = df['user'].replace("richard-hugh-cavendish", "lord-richard-hugh-cavendish", regex=True)
+    df['user'] = df['user'].replace("james-spooner-", "sir-james-spooner", regex=True)
+    df['user'] = df['user'].replace("nicholas-bonsor", "sir-nicholas-bonsor", regex=True)
 
     df['user'] = df['user'].str.strip()
-    df['user'] = df['user'].replace(" ", "-", regex=True)
+    #df['user'] = df['user'].replace(" ", "-", regex=True)
 
     list_users = df['user'].tolist()
     list =['https://www.desmog.com/' + user for user in list_users]
 
     df1 = pd.DataFrame(list, columns = ['url_desmog'])
 
-    save_data(df1, 'url_desmog_climate_2022_03_11_2.csv', 0)
+    timestr = time.strftime("%Y_%m_%d")
+    save_data(df1, 'url_desmog_climate_' + timestr + '.csv', 0)
 
     return df1
 
-
-def get_twitter_handles_desmog_climate():
+def get_twitter_handles_desmog_climate(collection_interupted):
 
     #df = get_urls_desmog_list()
-    df = import_data('url_desmog_climate_2022_03_11.csv')
+    timestr = time.strftime("%Y_%m_%d")
+    filename = 'tw_handles_desmog_' + timestr + '.csv'
 
-    list_url = df['url_desmog'].tolist()
+    df = import_data('url_desmog_climate_' + timestr + '.csv')
+
+    if collection_interupted == 0:
+        list_url = df['url_desmog'].tolist()
+
+    elif collection_interupted == 1:
+        df_collected = import_data(filename)
+        list_url_all = df['url_desmog'].tolist()
+        list_url_coll = df_collected['url_desmog'].tolist()
+
+        list_url = [x for x in list_url_all if x not in list_url_coll]
 
     list_handles = []
     list_urls = []
@@ -121,16 +133,17 @@ def get_twitter_handles_desmog_climate():
     #append = 1
     append = 0
 
-    timestr = time.strftime("%Y_%m_%d")
-    filename = 'tw_handles_climate_' + timestr + '.csv'
-    save_data(df1, 'tw_handles_climate.csv', append)
+
+    save_data(df1, filename, append)
 
     return df1
 
 def get_twitter_handles_desmog_openfeedback():
 
-    df1 = import_data('tw_handles_climate.csv')
+    df1 = import_data('tw_handles_desmog.csv')
     df2 = import_data('openfeedback_users.csv')
+
+
 
 def get_users_followers():
 
@@ -158,7 +171,7 @@ def get_list_desmog():
     df = df[df['follower_count']>9999]
     df['username'] = df['username'].str.lower()
 
-    """Tony heller is in Desmog but with the twitter account with one underscore, now the second oen suspended"""
+    """Tony heller is in Desmog but with the twitter account with one underscore, now the second one suspended"""
 
     list = df['username'].tolist() + ['tony__heller']
 
@@ -261,8 +274,6 @@ def get_list_activists():
     final_list.remove('ecosensenow') # in the dataset of desmog!
     final_list.remove('geoffreysupran') # among scientists who do climate
     final_list.remove('janet_rice') #pol
-
-    #print(df[df['username'] == 'emmanuelfaber']['user_profile_description'])
     final_list.remove('emmanuelfaber') #he changed his discription: "ceo - climate and social business activist" +français
 
     print('cliamte activists:', len(final_list))
@@ -270,6 +281,9 @@ def get_list_activists():
     return final_list
 
 if __name__ == '__main__':
+
+    get_urls_desmog_list()
+    get_twitter_handles_desmog_climate(collection_interupted = 0)
     #get_list_scientists_who_do_climate()
     #get_list_open_feedback()
     #et_list_desmog()
@@ -279,4 +293,3 @@ if __name__ == '__main__':
     #get_users_followers()
     #get_list_activists()
     #get_twitter_handles_desmog_climate()
-    get_urls_desmog_list()
