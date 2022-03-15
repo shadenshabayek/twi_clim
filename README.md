@@ -1,12 +1,11 @@
-#Code for the project: twi_clim
 
-Different steps. 
+# Code for the project: twi_clim
 
 ## Twitter Users dataset: Scientists, Activists, Delayers
 
 ### Delayers
 
-####To get error report for the Desmog urls:
+#### To get error report for the Desmog urls:
 
 (mac) Give permission
 
