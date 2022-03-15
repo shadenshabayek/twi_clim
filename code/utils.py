@@ -95,7 +95,9 @@ def write_results(json_response, filename, query, list_individuals):
                                  "tweet_count",
                                  "listed_count",
                                  "collection_date",
-                                 "collection_method"],
+                                 "collection_method",
+                                 'errors',
+                                 'error_type'],
                                 extrasaction='ignore')
 
         if 'data' and 'includes' in json_response:
@@ -421,6 +423,12 @@ def write_results(json_response, filename, query, list_individuals):
                 tweet["collection_date"] = timestr
                 tweet["collection_method"] = 'Twitter API V2'
 
+                if 'errors' in json_response:
+                    for error in json_response['errors']:
+                        if tweet["referenced_tweets"][0]["id"] == error['resource_id']:
+                            tweet['errors'] = error['detail']
+                            tweet['error_type'] = error['title']
+
                 writer.writerow(tweet)
 
         else:
@@ -495,7 +503,9 @@ def collect_twitter_data(list_individuals, query, start_time, end_time, bearer_t
                                  "tweet_count",
                                  "listed_count",
                                  "collection_date",
-                                 "collection_method"], extrasaction='ignore')
+                                 "collection_method",
+                                 'errors',
+                                 'error_type'], extrasaction='ignore')
         if not file_exists:
             writer.writeheader()
 
@@ -650,7 +660,7 @@ def connect_to_endpoint_user_metrics(url, headers):
         )
     return response.json()
 
-def write_results_user_metrics(json_response, filename, user):
+def write_results_user_metrics(json_response, filename, user, source):
 
     with open(filename, 'a+') as tweet_file:
 
@@ -667,7 +677,8 @@ def write_results_user_metrics(json_response, filename, user):
                                 'created_at',
                                 'description',
                                 'collection_date',
-                                'collection_method'], extrasaction='ignore')
+                                'collection_method',
+                                'source'], extrasaction='ignore')
 
         if 'data'  in json_response:
 
@@ -680,6 +691,7 @@ def write_results_user_metrics(json_response, filename, user):
             tweet['collection_date'] = timestr
             tweet['collection_method'] = 'Twitter API V2'
             tweet['username'] = tweet['username'].lower()
+            tweet['source'] = source
             writer.writerow(tweet)
 
         else:
@@ -690,7 +702,7 @@ def write_results_user_metrics(json_response, filename, user):
             writer.writerow(tweet)
             print('did not find the account')
 
-def get_user_metrics(bearer_token, list, filename):
+def get_user_metrics(bearer_token, list, filename, source):
 
     file_exists = os.path.isfile(filename)
 
@@ -708,7 +720,8 @@ def get_user_metrics(bearer_token, list, filename):
                                 'created_at',
                                 'description',
                                 'collection_date',
-                                'collection_method'], extrasaction='ignore')
+                                'collection_method',
+                                'source'], extrasaction='ignore')
         if not file_exists:
             writer.writeheader()
 
@@ -718,7 +731,8 @@ def get_user_metrics(bearer_token, list, filename):
         url = create_url(user)
         headers = create_headers(bearer_token)
         json_response = connect_to_endpoint_user_metrics(url, headers)
-        write_results_user_metrics(json_response, filename)
+        source = source
+        write_results_user_metrics(json_response, filename, source)
         sleep(3)
 
 '''Get list members by list id on twitter , API V1'''

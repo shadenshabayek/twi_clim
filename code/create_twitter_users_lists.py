@@ -151,7 +151,8 @@ def get_users_followers():
 
     get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
                     list = list_twitter_handles_from_google_spreadsheet('tw_handles_climate') ,
-                    filename = os.path.join('.', 'data', 'followers_twitter_desmog_climate'  + '.csv'))
+                    filename = os.path.join('.', 'data', 'followers_twitter_desmog_climate'  + '.csv'),
+                    source = 'desmog_climate_database')
 
 def get_list_desmog():
 
@@ -162,8 +163,10 @@ def get_list_desmog():
     """drop politicians"""
 
     df = df.replace(r'^\s*$', np.nan, regex=True)
-    df1 = df.dropna(subset=['category'])
-    drop_politicians = df1['username'].tolist()
+    df_politcians = import_data('desmog_users_politicians.csv')
+    df_politcians['username'] = df_politcians['username'].lower()
+    drop_politicians = df_politcians['username'].tolist()
+
     df = df[~df['username'].isin(drop_politicians)]
 
     """ Take desmog users with 10k+ followers"""

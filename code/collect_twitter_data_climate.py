@@ -41,25 +41,31 @@ if __name__=="__main__":
     list_users_all, list_users = get_list_users(collection_interupted = 0)
     print(len(list_users))
 
-    list_users_tw =['from:' + user for user in list_users]
+
+    #list_users_tw =['from:' + user for user in list_users]
+    list = ['milneorchid']
+    list_users_tw =['from:' + user for user in list]
 
     tic()
     timestr = time.strftime("%Y_%m_%d")
     df_tweets = import_data('twitter_data_climate_' + timestr  + '.csv')
     l = len(df_tweets)
-    print(df_tweets['created_at'].iloc[l-1])
-    print(list_users_tw[11:100])
+    #print(df_tweets['created_at'].iloc[l-1])
+    #print(list_users_tw[11:100])
 
-    for query in list_users_tw[11:100] :
+    for query in list_users_tw :
 
         collect_twitter_data(
             list_individuals = list_users_all,
             query = query,
-            start_time = '2021-06-01T23:00:00Z',
-            end_time = '2021-12-01T23:00:05Z',
+            #start_time = '2021-06-01T23:00:00Z',
+            start_time = '2021-06-03T01:55:20.000Z',
+            end_time = '2021-06-03T09:55:20.000Z',
+            #end_time = '2021-12-01T23:00:05Z',
             #end_time = df['created_at'].iloc[l-1],
             bearer_token= os.getenv('TWITTER_TOKEN'),
-            filename = os.path.join('.', 'data', 'twitter_data_climate_' + timestr  + '.csv'),
+            #filename = os.path.join('.', 'data', 'twitter_data_climate_' + timestr  + '.csv'),
+            filename = os.path.join('.', 'data', 'twitter_data_climate_test_' + timestr  + '.csv')
             )
         sleep(3)
     toc()
