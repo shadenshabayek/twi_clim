@@ -1,11 +1,12 @@
-##Code for the project: twi_clim
+#Code for the project: twi_clim
 
+Different steps. 
 
-## Twitter users dataset: Scientists, Activists, Delayers
+## Twitter Users dataset: Scientists, Activists, Delayers
 
-To get error report for the Desmog urls:
+### Delayers
 
-Step 1:
+####To get error report for the Desmog urls:
 
 (mac) Give permission
 
@@ -19,7 +20,7 @@ Run the script:
  ./code/report_urls_desmog.sh
 ```
 
-## Tweets dataset : 
+## Tweets dataset 
 
 To collect the tweets of all users within each groups, from 2021-06-01 to 2021-12-01, run: 
 
@@ -32,5 +33,7 @@ To collect Tweets containing the keyword COP26 during COP26, run:
  ```
 ./code/collect_twitter_data_COP26.py
 ```
+
+
 
 
