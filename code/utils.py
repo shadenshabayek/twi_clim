@@ -425,9 +425,10 @@ def write_results(json_response, filename, query, list_individuals):
 
                 if 'errors' in json_response:
                     for error in json_response['errors']:
-                        if tweet["referenced_tweets"][0]["id"] == error['resource_id']:
-                            tweet['errors'] = error['detail']
-                            tweet['error_type'] = error['title']
+                        if "referenced_tweets" in tweet.keys():
+                            if tweet["referenced_tweets"][0]["id"] == error['resource_id']:
+                                tweet['errors'] = error['detail']
+                                tweet['error_type'] = error['title']
 
                 writer.writerow(tweet)
 

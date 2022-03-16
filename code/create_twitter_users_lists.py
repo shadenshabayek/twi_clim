@@ -126,7 +126,6 @@ def get_twitter_handles_desmog_climate(collection_interupted):
         list_handles.append(twitter_handles)
 
     df1 = pd.DataFrame()
-
     df1['urls_desmog'] = list_urls
     df1['twitter_handle'] = list_handles
 

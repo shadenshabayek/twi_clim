@@ -125,7 +125,7 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
     df['username'] = df['username'].str.lower()
     df['text'] = df['text'].str.lower()
     df['text'] = df['text'] + '.'
-    df = df[df['lang']== 'en']
+    df = df[df['lang'] == 'en']
     df['text'] = df['text'].apply(get_url_free_text)
 
     if remove_covid == 1:
