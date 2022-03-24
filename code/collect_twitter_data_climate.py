@@ -29,6 +29,8 @@ def get_list_users(collection_interupted):
         new_time = '2022_03_15'
         #df_tweets = import_data('twitter_data_climate_tweets_' + timestr  + '.csv')
         df_tweets = import_data('twitter_data_climate_tweets_' + new_time  + '.csv')
+        df_tweets = df_tweets[~df_tweets['query'].isin(["f"])] #this query slipped in!
+
         list_users = [x for x in df['username'].unique() if x not in df_tweets['username'].unique()]
 
     return list_users_all, list_users
@@ -37,22 +39,24 @@ if __name__=="__main__":
 
     load_dotenv()
     #timestr = time.strftime("%Y_%m_%d")
+    #missing 'aliceclimate' 200ème
+    #error query = f slipped in.
+    
     timestr = '2022_03_15'
     list_users_all, list_users = get_list_users(collection_interupted = 0)
-
     list_users_tw =['from:' + user for user in list_users]
-    print(list_users_tw[142:146])
+    print(len(list_users_tw))
 
     tic()
-    for query in list_users_tw[144:146]:
+    for query in list_users_tw:
         print(query)
-    #     collect_twitter_data(
-    #         list_individuals = list_users_all,
-    #         query = query,
-    #         start_time = '2021-06-01T23:00:00Z',
-    #         end_time = '2021-12-01T23:00:05Z',
-    #         bearer_token= os.getenv('TWITTER_TOKEN'),
-    #         filename = os.path.join('.', 'data', 'twitter_data_climate_tweets_' + timestr  + '.csv'),
-    #         )
-    #     sleep(3)
-    # toc()
+        collect_twitter_data(
+            list_individuals = list_users_all,
+            query = query,
+            start_time = '2021-06-01T23:00:00Z',
+            end_time = '2021-12-01T23:00:05Z',
+            bearer_token= os.getenv('TWITTER_TOKEN'),
+            filename = os.path.join('.', 'data', 'twitter_data_climate_tweets_' + timestr  + '.csv'),
+            )
+        sleep(3)
+    toc()

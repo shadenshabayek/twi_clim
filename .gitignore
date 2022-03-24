@@ -24,3 +24,7 @@ __pycache__
 *.bbl
 
 *.mod
+
+dict2.pkl
+
+!data/desmog_climate.csv

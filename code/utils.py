@@ -10,6 +10,7 @@ import time
 import os
 import os.path
 import pandas as pd
+import pickle
 import numpy as np
 import requests
 
@@ -550,11 +551,24 @@ def import_data(file_name):
 
 def import_dict(file_name):
 #use this function to import dictionnary which contains handle equivalents accross platform x and Twitter.
-
+    file_name = file_name + '.pkl'
     data_path = os.path.join('.', 'data', file_name)
-    dict = np.load(data_path, allow_pickle='TRUE').item()
+    #dict = np.load(data_path, allow_pickle='TRUE').item()
+    #return dict
+    a_file = open(data_path, "rb")
+    dict = pickle.load(a_file)
     return dict
 
+def save_dict(file_name, dict):
+
+    file_name = file_name + '.pkl'
+    data_path = os.path.join('.', 'data', file_name)
+    a_file = open(data_path, "wb")
+    pickle.dump(dict, a_file)
+    a_file.close()
+    # a_file = open("dict2.pkl", "rb")
+    # dict2 = pickle.load(a_file)
+    print(file_name, 'is saved')
 def save_figure(figure_name):
 
     figure_path = os.path.join('.', 'figure', figure_name)
