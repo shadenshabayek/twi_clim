@@ -26,11 +26,9 @@ def get_list_users(collection_interupted):
         print('number of users', len(list_users))
 
     elif collection_interupted == 1:
-        new_time = '2022_03_15'
-        #df_tweets = import_data('twitter_data_climate_tweets_' + timestr  + '.csv')
-        df_tweets = import_data('twitter_data_climate_tweets_' + new_time  + '.csv')
-        df_tweets = df_tweets[~df_tweets['query'].isin(["f"])] #this query slipped in!
 
+        df_tweets = import_data('twitter_data_climate_tweets_' + timestr  + '.csv')
+        #df_tweets = df_tweets[~df_tweets['query'].isin(["f"])] #this query slipped in!
         list_users = [x for x in df['username'].unique() if x not in df_tweets['username'].unique()]
 
     return list_users_all, list_users
@@ -38,11 +36,8 @@ def get_list_users(collection_interupted):
 if __name__=="__main__":
 
     load_dotenv()
-    #timestr = time.strftime("%Y_%m_%d")
-    #missing 'aliceclimate' 200ème
-    #error query = f slipped in.
-    
-    timestr = '2022_03_15'
+    timestr = time.strftime("%Y_%m_%d")
+
     list_users_all, list_users = get_list_users(collection_interupted = 0)
     list_users_tw =['from:' + user for user in list_users]
     print(len(list_users_tw))

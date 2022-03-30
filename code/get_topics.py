@@ -1,16 +1,14 @@
-
-from copy import deepcopy #not used
+from copy import deepcopy
 from datetime import date
-from gensim.models import Phrases #Automatically detect common phrases – aka multi-word expressions, word n-gram collocations – from a stream of sentences.
+from gensim.models import Phrases
 from gensim.models.phrases import Phraser
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import strip_tags
-from matplotlib.pyplot import cm #not used
+from matplotlib.pyplot import cm
 from matplotlib import pyplot as plt
-from scipy.cluster import hierarchy  #to plot the dendogram
+from scipy.cluster import hierarchy
 from top2vec import Top2Vec
 
-#import emoji
 import pandas as pd
 pd.options.mode.chained_assignment = None
 import plotly.express as px
@@ -18,24 +16,21 @@ import matplotlib.colors as mcolors
 import numpy as np
 import re #pip install regex (python3.7!)
 import time
-import umap.plot #UMAP is often used for visualization by reducing data to 2-dimensions.
-
+import umap.plot
 from plotly.colors import n_colors
-#import os #doesn't work with python 3.7
+import os
 
 """ important note : open in an env with python 3.7 (anaconda) """
 
 def import_data(file_name):
 
-    #data_path = os.path.join(".", "data", file_name)
-    data_path = '/Users/shadenshabayek/Documents/Webclim/alt-platforms-telegram/data/' + file_name
+    data_path = os.path.join(".", "data", file_name)
     df = pd.read_csv(data_path, low_memory=False)
     return df
 
 def save_data(df, file_name, append):
 
-    #file_path = os.path.join('.', 'data', file_name)
-    file_path = '/Users/shadenshabayek/Documents/Webclim/alt-platforms-telegram/data/' + file_name
+    file_path = os.path.join('.', 'data', file_name)
 
     if append == 1:
         df.to_csv(file_path, mode='a', header=False, index=False)
@@ -46,64 +41,31 @@ def save_data(df, file_name, append):
 
 def save_figure(figure_name):
 
-    figure_path = '/Users/shadenshabayek/Documents/Webclim/alt-platforms-telegram/figure/' + figure_name
+    figure_path = os.path.join('.', 'figure', figure_name)
     plt.savefig(figure_path, bbox_inches='tight')
     print("The '{}' figure is saved.".format(figure_name))
 
-def update_truncated_retweets (df, filename):
-
-    """domain names of truncated RT missing so recollect"""
-
-    #df_rt = import_data('climate_retweets_full_length_2022_01_24.csv')
-    df_rt = import_data(filename)
-
-    df_rt = df_rt.drop(["type_of_tweet",
-                        "author_id",
-                        "retweet_id",
-                        "retweet_count",
-                        "reply_count",
-                        "like_count",
-                        "withheld"], axis = 1)
-
-    df_updated = df.merge(df_rt, on='id', how='left')
-    df_updated['text'] = df_updated['text_y'].fillna(df_updated['text_x'])
-    df_updated = df_updated.drop(['text_x', 'text_y'], axis=1)
-
-    df_updated['expanded_urls'] = df_updated['expanded_urls_y'].fillna(df_updated['expanded_urls_x'])
-    df_updated = df_updated.drop(['expanded_urls_x', 'expanded_urls_y'], axis=1)
-
-    df_updated['domain_name'] = df_updated['domain_name_y'].fillna(df_updated['domain_name_x'])
-    df_updated = df_updated.drop(['domain_name_x', 'domain_name_y'], axis=1)
-
-    return df_updated
-
-def keep_three_groups_update_rt (df):
+def keep_three_groups(df):
 
     df1 = import_data('type_users_climate.csv')
     df1['type'] = df1['type'].astype(int)
-    df_final = df.merge(df1, how = 'inner', on = ['username'])
+    df2 = df.merge(df1, how = 'inner', on = ['username'])
 
     keep_type = [1, 2, 4]
-    df_final = df_final[df_final['type'].isin(keep_type)]
-    print('Total number of tweets (type 1,2,4) before update:', len(df_final))
+    df2 = df2[df2['type'].isin(keep_type)]
 
-    df_updated = update_truncated_retweets(df_final, 'climate_retweets_full_length_2022_01_24.csv')
+    print(df2.groupby(['type']).size())
 
-    print('Total number of tweets (type 1,2,4) after update:', len(df_updated))
-    print(df_updated.groupby(['type']).size())
-
-    return df_updated
+    return df2
 
 def get_url_free_text(text):
 
     text = re.sub(r'http\S+', '', text)
-
     return text
 
 def get_mention_free_text(text):
 
     text = re.sub(r'@\S+', '', text)
-
     return text
 
 def remove_covid_tweets(df):
@@ -112,12 +74,10 @@ def remove_covid_tweets(df):
     mylist = ['covid', 'mask', 'fauci', 'wuhan', 'vax', 'pandemic']
 
     df1 = df[df.text.apply(lambda tweet: any(words in tweet for words in mylist))]
-
     list1 = df1['id'].tolist()
     print('Number of covid tweets', len(list1))
 
     df = df[~df['id'].isin(list1)]
-
     return df
 
 def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
@@ -129,12 +89,10 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
     df['text'] = df['text'].apply(get_url_free_text)
 
     if remove_covid == 1:
-
         df = remove_covid_tweets(df)
         print('total number of tweets all time, excluding covid tweets', len(df))
 
     if set_topic_climate == 1:
-
         list_1 = ['arctic',
                     'alarmist',
                     'antarctic',
@@ -143,7 +101,6 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
                     'climate',
                     'CO2',
                     'emissions',
-                    #'energy',
                     ' fire'
                     'forest',
                     'geological',
@@ -173,22 +130,17 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
                     'weather']
         #list from topic 0
         list_2 = ['climate',
-                    #'impacts',
-                    #'future' ,
                     'scientists' ,
                     ' heat ',
                     'drought',
                     'environmental',
                     'nature',
-                    #'global',
                     'planet',
-                    #'earth',
                     'warming ',
                     ' water ',
                     'ocean',
                     'heatwaves',
                     'emissions',
-                    #'heat wave',
                     'adaptation',
                     'planet ' ,
                     'temperatures' ,
@@ -208,7 +160,6 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
         print('average number of tweets per group')
 
     if remove_mentions == 1:
-
         df['text'] = df['text'].apply(get_mention_free_text)
 
     return df
@@ -216,123 +167,31 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
 def get_documents(remove_covid, set_topic_climate, remove_mentions, all_time, cop26):
 
     if all_time == 1:
-
-        df = import_data('twitter_data_climate.csv')
+        df = import_data('twitter_data_climate_tweets_2022_03_15.csv')
         df['username'] = df['username'].str.lower()
         df['date'] = pd.to_datetime(df['created_at']).dt.date
-        df = df[(df['date']> date(2021, 4, 15)) & (df['date']<date(2021, 8, 15))]
-        df = df.reset_index()
-        print('total number of tweets mid-April to mid-August', len(df))
+        #df = df[(df['date']> date(2021, 4, 15)) & (df['date']<date(2021, 8, 15))]
+        #df = df.reset_index()
+        print('total number of tweets', len(df))
 
     elif cop26 == 1:
-
         df = import_data('twitter_data_climate_users_cop26.csv')
         df['username'] = df['username'].str.lower()
         print('total number of tweets COP26', len(df))
 
-    df = keep_three_groups_update_rt (df)
-
-    print('total number of tweets all time', len(df))
+    df = keep_three_groups(df)
     print('total number of users', df['username'].nunique())
 
-    df['text'] = df['text'].apply(get_url_free_text)
     df = remove_tweets (df, remove_covid, set_topic_climate, remove_mentions)
 
-    # df = remove_covid_tweets(df)
-    # print('total number of tweets all time, excluding covid tweets', len(df))
-    #
-    # df['username'] = df['username'].str.lower()
-    # df['text'] = df['text'].str.lower()
-    # df['text'] = df['text'] + '.'
-    # df = df[df['lang']== 'en']
-    #
-    # if set_topic_climate == 1:
-    #
-    #     list_1 = ['arctic',
-    #                 'alarmist',
-    #                 'antarctic',
-    #                 'bleaching',
-    #                 'carbon ',
-    #                 'climate',
-    #                 'CO2',
-    #                 'emissions',
-    #                 #'energy',
-    #                 ' fire'
-    #                 'forest',
-    #                 'geological',
-    #                 'greenhouse',
-    #                 'glacier',
-    #                 'glaciers',
-    #                 'heatwave',
-    #                 ' ice ',
-    #                 'nuclear',
-    #                 ' ocean ',
-    #                 'oceans ',
-    #                 'plant ',
-    #                 'pollutant',
-    #                 'pollution',
-    #                 'polar',
-    #                 'renewable',
-    #                 'recycled',
-    #                 'recycle',
-    #                 'science',
-    #                 'solar',
-    #                 'species',
-    #                 'warming',
-    #                 'wildfire',
-    #                 'wildfires',
-    #                 'wind ',
-    #                 'wildlife',
-    #                 'weather']
-    #     #list from topic 0
-    #     list_2 = ['climate',
-    #                 #'impacts',
-    #                 #'future' ,
-    #                 'scientists' ,
-    #                 ' heat ',
-    #                 'drought',
-    #                 'environmental',
-    #                 'nature',
-    #                 #'global',
-    #                 'planet',
-    #                 #'earth',
-    #                 'warming ',
-    #                 ' water ',
-    #                 'ocean',
-    #                 'heatwaves',
-    #                 'emissions',
-    #                 #'heat wave',
-    #                 'adaptation',
-    #                 'planet ' ,
-    #                 'temperatures' ,
-    #                 'ecosystems ',
-    #                 'research',
-    #                 'resilience',
-    #                 'carbon',
-    #                 'heatwave',
-    #                 'fossil',
-    #                  'fuel']
-    #
-    #     mylist = list(set(list_1) | set(list_2))
-    #
-    #     df = df[df.text.apply(lambda tweet: any(words in tweet for words in mylist))]
-    #     print('there are', len(df), 'tweets that speak about climate')
-    #     print('tweets about climate per group:', (df.groupby(['type'])['text'].count())/len(df))
-    #     print('average number of tweets per group')
-    #
-    # """remove mentions"""
-    #
-    # df['text'] = df['text'].apply(get_mention_free_text)
-
     df_tweets = pd.DataFrame(columns=['username',
-                                    'text_tweets_concat',
-                                    'type'])
+                                      'text_tweets_concat',
+                                      'type'])
 
     for user in df['username'].unique().tolist():
 
         df1 = df[df['username'] == user]
         type = df1['type'].iloc[0]
-
         document = ' '.join(df1['text'].tolist())
         print('length of total tweets of', user, 'is', len(document))
 
@@ -346,13 +205,13 @@ def get_documents(remove_covid, set_topic_climate, remove_mentions, all_time, co
     if all_time == 1:
 
         timestr = time.strftime("%Y_%m_%d")
-        title = 'df_tweets_4months_climate_3groups_rt_' + timestr + '.csv'
+        title = 'df_tweets_climate_3groups_concat_' + timestr + '.csv'
         save_data(df_tweets, title, 0)
 
     elif cop26 == 1:
 
         timestr = time.strftime("%Y_%m_%d")
-        title = 'df_tweets_cop26_3groups_rt_3_' + timestr + '.csv'
+        title = 'df_tweets_cop26_3groups_concat_' + timestr + '.csv'
         save_data(df_tweets, title, 0)
 
     return df_tweets
@@ -362,48 +221,26 @@ def get_doc_top2vec(all_time, cop26):
     if all_time == 1:
 
         timestr = time.strftime("%Y_%m_%d")
-        #timestr = '2022_01_27'
-        title = 'df_tweets_4months_climate_3groups_rt_2_' + timestr + '.csv'
-        df = import_data(title)
-        #df =get_documents(set_topic_climate = 1, all_time = 1, cop26 = 0)
+        title = 'df_tweets_climate_3groups_concat_' + timestr + '.csv'
+        #df = import_data(title)
+        #df = get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, all_time = 1, cop26 = 0)
         df['length']=df['text_tweets_concat'].apply(len)
         df=df[df['length']>2000]
 
     elif cop26 == 1:
 
         timestr = time.strftime("%Y_%m_%d")
-        title = 'df_tweets_cop26_3groups_rt_3_' + timestr + '.csv'
+        title = 'df_tweets_cop26_3groups_concat_' + timestr + '.csv'
         df = import_data(title)
         #df = get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, all_time = 0, cop26 = 1)
         df['length']=df['text_tweets_concat'].apply(len)
         df = df[df['length']>140]
 
-
     #df['length'].hist(bins=100)
-    #print(df.groupby(['type']).size())
-    #print(df['length'].head(20))
     #print('Number of remaining users after excluding very short docs', len(df))
-    #list_1 = df['username'].tolist()
-
-    #df=df[df['length']<600000]
-    # print(df['length'].head(20))
-    # print(len(df))
-    # list_2 = df['username'].tolist()
-
-    #list = [x for x in list_2 if x not in list_1]
-    #print(list)
-    #df['length'].hist(bins=100)
-    #print('Number of remaining users', len(df))
-    #ax.ticklabel_format(useOffset=False)
-
     #save_figure('length_docs_tweets_topics_clim_3groups.jpg')
-    #plt.show()
 
     return df
-
-# def default_tokenizer(doc):
-#     """Tokenize documents for training and remove too long/short words"""
-#     return simple_preprocess(strip_tags(doc),min_len=3,deacc=False)
 
 def bigrammer(doc):
     #sentence_stream = doc.split(" ")
@@ -429,7 +266,7 @@ def test_top2vec():
     quency lower than this. For smaller corpora a smaller min_count will be necessary.
     """
 
-    min_count=20
+    min_count = 20
 
     model = Top2Vec(documents=df['text_tweets_concat'].values,
                     embedding_model='doc2vec',
@@ -439,7 +276,7 @@ def test_top2vec():
                     hdbscan_args={"min_cluster_size":5})#Shaden replaced 20 by 10 #Setting the min cluster size of HDBscan algorithm to 30 to avoid getting too many clusters
 
     timestr = time.strftime("%Y_%m_%d")
-    title = './top2vec/climate_topics_3_' + timestr + '.mod'
+    title = './top2vec/climate_topics_' + timestr + '.mod'
     model.save(title)
 
 def play_with_top2vec(model_title):
@@ -725,6 +562,7 @@ def get_plots_stats():
 if __name__=="__main__":
 
   print('hello')
-  get_doc_top2vec(all_time = 0, cop26 = 1)
+
+  #get_doc_top2vec(all_time = 0, cop26 = 1)
   #test_top2vec()
   #get_plots_stats()

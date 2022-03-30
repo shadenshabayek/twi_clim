@@ -33,8 +33,6 @@ def get_urls_desmog_list():
     "(deceased)": "",
     "sir ": "",
     "lord ": "",
-    #" a ": " ",
-    #" w ": " ",
     ":": " ",
     "\’": "-",
     "\,": "",
@@ -70,11 +68,10 @@ def get_urls_desmog_list():
 
 def get_twitter_handles_desmog_climate(collection_interupted):
 
-    #df = get_urls_desmog_list()
     timestr = time.strftime("%Y_%m_%d")
     filename = 'tw_handles_desmog_' + timestr + '.csv'
-
-    df = import_data('url_desmog_climate_' + timestr + '.csv')
+    #df = import_data('url_desmog_climate_' + timestr + '.csv')
+    df = get_urls_desmog_list()
 
     if collection_interupted == 0:
         list_url = df['url_desmog'].tolist()
@@ -83,7 +80,6 @@ def get_twitter_handles_desmog_climate(collection_interupted):
         df_collected = import_data(filename)
         list_url_all = df['url_desmog'].tolist()
         list_url_coll = df_collected['url_desmog'].tolist()
-
         list_url = [x for x in list_url_all if x not in list_url_coll]
 
     list_handles = []
@@ -113,9 +109,11 @@ def get_twitter_handles_desmog_climate(collection_interupted):
     df1['urls_desmog'] = list_urls
     df1['twitter_handle'] = list_handles
 
-    #append = 1
-    append = 0
+    if collection_interupted == 0:
+        append = 0
 
+    elif collection_interupted == 1:
+        append = 1
 
     save_data(df1, filename, append)
 
@@ -125,7 +123,6 @@ def get_twitter_handles_desmog_openfeedback():
 
     df1 = import_data('tw_handles_desmog.csv')
     df2 = import_data('openfeedback_users.csv')
-
 
 
 def get_users_followers():
@@ -266,9 +263,15 @@ def get_list_activists():
 
     return final_list
 
+def main():
+
+    get_twitter_handles_desmog_climate(collection_interupted = 0)
+
 if __name__ == '__main__':
 
-    get_urls_desmog_list()
+    main()
+    #get_urls_desmog_list()
+    #get_twitter_handles_desmog_climate(collection_interupted = 0)
     #get_twitter_handles_desmog_climate(collection_interupted = 0)
     #get_list_scientists_who_do_climate()
     #get_list_open_feedback()
