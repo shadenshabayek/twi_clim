@@ -750,7 +750,7 @@ def get_user_metrics(bearer_token, list, filename, source):
         headers = create_headers(bearer_token)
         json_response = connect_to_endpoint_user_metrics(url, headers)
         source = source
-        write_results_user_metrics(json_response, filename, source)
+        write_results_user_metrics(json_response, filename, user, source)
         sleep(3)
 
 '''Get list members by list id on twitter , API V1'''
@@ -917,7 +917,7 @@ def write_results_user_metrics_lists(json_response, filename):
                 user['tweet_count'] = user['statuses_count']
                 user['follower_count'] = user['followers_count']
                 user['following_count'] = user['friends_count']
-                user['username'] = user['screen_name']
+                user['username'] = user['screen_name'].lower()
                 timestr = time.strftime("%Y-%m-%d")
                 user["collection_date"] = timestr
                 user["collection_method"] = 'Twitter API V2'
@@ -963,12 +963,13 @@ def get_list_members(filename, list_id, bearer_token) :
             if json_response['next_cursor'] == 0:
                 flag = False
 
-if __name__ == "__main__":
-    load_dotenv()
-    bearer_token= os.getenv('TWITTER_TOKEN')
-    list_id = 1053067173961326594
-    file_name = 'members_twitter_list_scientists_who_do_climate'  + '.csv'
-    filename = os.path.join('.', 'data', file_name)
-    #json_response = connect_to_endpoint_list(list_id, bearer_token)
-    #print(json_response)
-    get_list_members(filename, list_id, bearer_token)
+# if __name__ == "__main__":
+#
+#     load_dotenv()
+#     bearer_token= os.getenv('TWITTER_TOKEN')
+#     list_id = 1053067173961326594
+#     file_name = 'members_twitter_list_scientists_who_do_climate'  + '.csv'
+#     filename = os.path.join('.', 'data', file_name)
+#     #json_response = connect_to_endpoint_list(list_id, bearer_token)
+#     #print(json_response)
+#     get_list_members(filename, list_id, bearer_token)

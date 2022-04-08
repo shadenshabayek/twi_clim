@@ -23,40 +23,18 @@ from utils import (import_data,
                     save_figure
                     )
 
-def add_type_list_climate(df):
+def keep_three_groups(df):
 
-    list_1 = get_list_desmog() + get_list_open_feedback()
-    list_2 = get_list_scientists_who_do_climate()
-    #list_3 = list_top_mentioned()
-    list_31, list_32, list_312 = get_list_top_mentioned_by_type() #greta in top mentioned common
-    list_activists = get_list_activists() + ['gretathunberg']
+    df1 = import_data('type_users_climate.csv')
+    df1['type'] = df1['type'].astype(int)
+    df2 = df.merge(df1, how = 'inner', on = ['username'])
 
-    #df = import_data('twitter_data_climate.csv')
-    df['username'] = df['username'].str.lower()
+    keep_type = [1, 2, 4]
+    df2 = df2[df2['type'].isin(keep_type)]
 
-    drop =['nytimes']
-    df = df[~df['username'].isin(drop)]
+    print(df2.groupby(['type']).size())
 
-    df['type'] = 5
-
-    df['type'] = np.where(df['username'].isin(list_1), 1, df['type'])
-    df['type'] = np.where(df['username'].isin(list_2), 2, df['type'])
-    df['type'] = np.where(df['username'].isin(list_31), 31, df['type'])
-    df['type'] = np.where(df['username'].isin(list_32), 32, df['type'])
-    df['type'] = np.where(df['username'].isin(list_312), 312, df['type'])
-    df['type'] = np.where(df['username'].isin(list_activists), 4, df['type'])
-
-    df = df.sort_values(by='type', ascending=False)
-
-    df_count = df.drop_duplicates(subset='username', keep="last")
-    print(df_count.groupby(['type'], as_index=False).size())
-
-    df_type = pd.DataFrame(columns=['username', 'type'])
-    df_type[['username', 'type']] = df_count[['username', 'type']]
-
-    save_data(df_type, 'type_users_climate.csv', 0)
-
-    return df
+    return df2
 
 def get_info_description_climate():
 

@@ -1,13 +1,17 @@
-
+import ast
 import pandas as pd
 import pickle
 import numpy as np
 import os
 import time
 
+pd.options.mode.chained_assignment = None  # default='warn'
+
 from dotenv import load_dotenv
 from datetime import date
+from time import sleep
 from utils import (get_user_metrics,
+                    get_list_members,
                     import_data,
                     import_google_sheet,
                     import_dict,
@@ -19,7 +23,22 @@ import selenium
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 
-""" Desmog database, get list climate + twitter handles"""
+
+def get_stat(df, p, variable):
+
+    median = df[variable].median()
+    percentile = np.percentile(df[variable], p)
+    print('Median {}'.format(variable), median)
+    print('cutt-off', percentile, 'of followers count, the', p, 'percentile')
+
+def get_top_10k(df, variable):
+
+    df = df[df[variable]>9999]
+    df['username'] = df['username'].str.lower()
+
+    return df
+
+'''delayers'''
 
 def get_urls_desmog_list():
 
@@ -85,7 +104,7 @@ def get_twitter_handles_desmog_climate(collection_interupted):
     list_handles = []
     list_urls = []
 
-    for url in list_url:
+    for url in list_url[5:8]:
 
         print(url)
 
@@ -94,6 +113,8 @@ def get_twitter_handles_desmog_climate(collection_interupted):
 
         try:
             element = browser.find_element_by_xpath("//h2[@id='h-social-media']/following-sibling::ul")
+            print(element)
+            #'//*[@id="clarify-box"]'
             twitter_handles = re.findall("@(.*?) on Twitter", element.text)
 
         except:
@@ -104,6 +125,7 @@ def get_twitter_handles_desmog_climate(collection_interupted):
 
         list_urls.append(url)
         list_handles.append(twitter_handles)
+        sleep(2)
 
     df1 = pd.DataFrame()
     df1['urls_desmog'] = list_urls
@@ -121,89 +143,123 @@ def get_twitter_handles_desmog_climate(collection_interupted):
 
 def get_twitter_handles_desmog_openfeedback():
 
-    df1 = import_data('tw_handles_desmog.csv')
+    df1 = import_data('tw_handles_climate.csv')
     df2 = import_data('openfeedback_users.csv')
+    df3 = import_data('desmog_users_politicians.csv')
 
+    for index, row in df1.iterrows():
+        df1.at[index, 'twitter_handle']=ast.literal_eval(row['twitter_handle'])
+
+    list_desmog_all = [item for sublist in df1['twitter_handle'].tolist() for item in sublist]
+    list_desmog_all = list(map(str.lower, list_desmog_all))
+    list_desmog_all = list(map(str.strip, list_desmog_all))
+    list_desmog_politicians = df3['username'].str.lower().tolist()
+
+    list_desmog = [x for x in list_desmog_all if x not in list_desmog_politicians]
+    list_openfeedback = df2['twitter_handle'].str.lower().tolist()
+
+    print(list_desmog)
+    print(list_openfeedback)
+
+    return list_desmog, list_openfeedback
 
 def get_users_followers():
 
     load_dotenv()
+    list_desmog, list_openfeedback = get_twitter_handles_desmog_openfeedback()
 
     get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
-                    list = list_twitter_handles_from_google_spreadsheet('tw_handles_climate') ,
-                    filename = os.path.join('.', 'data', 'followers_twitter_desmog_climate'  + '.csv'),
+                    list = list_desmog ,
+                    filename = os.path.join('.', 'data', 'followers_twitter_delayers_climate'  + '.csv'),
                     source = 'desmog_climate_database')
 
-def get_list_desmog():
+    get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
+                    list = list_openfeedback ,
+                    filename = os.path.join('.', 'data', 'followers_twitter_delayers_climate'  + '.csv'),
+                    source = 'open_feedback')
 
-    #df = import_google_sheet ('followers_twitter_desmog_climate')
-    #if not linked to google spread sheet_instance
-    df = import_data('followers_twitter_desmog_climate.csv')
+def get_list_delayers():
 
-    """drop politicians"""
+    df = import_data ('followers_twitter_delayers_climate.csv')
+    df = df[~df['description'].isin(['did not find the account, deleted or suspended'])]
 
-    df = df.replace(r'^\s*$', np.nan, regex=True)
-    df_politcians = import_data('desmog_users_politicians.csv')
-    df_politcians['username'] = df_politcians['username'].lower()
-    drop_politicians = df_politcians['username'].tolist()
+    """Tony heller is in Desmog but with the twitter account with one underscore, now the second one (two under scores) suspended"""
 
-    df = df[~df['username'].isin(drop_politicians)]
+    print('Desmog:', len(df[df['source'] == 'desmog_climate_database']))
+    print('open_feedback:', len(df[df['source'] == 'open_feedback']))
 
-    """ Take desmog users with 10k+ followers"""
+    get_stat(df, 62, 'follower_count')
+    df = get_top_10k(df, 'follower_count')
+    list = df['username'].tolist()
 
-    df = df[df['follower_count']>9999]
-    df['username'] = df['username'].str.lower()
+    print('List Delayers:', len(list), 'users')
+    return list, df
 
-    """Tony heller is in Desmog but with the twitter account with one underscore, now the second one suspended"""
-
-    list = df['username'].tolist() + ['tony__heller']
-
-    print("The number of Twitter (desmog) handles is", len(list))
-
-    return list
+'''scientists'''
 
 def collect_members_from_twitter_list():
 
     load_dotenv()
-    filename = './data/memebers_twitter_list_scientists_who_do_science'  + '.csv'
+
+    file_name = 'members_twitter_list_scientists_who_do_climate'  + '.csv'
+    filename = os.path.join('.', 'data', file_name)
     list_id = 1053067173961326594
     bearer_token = os.getenv('TWITTER_TOKEN')
 
     get_list_members(filename, list_id, bearer_token)
 
-    df = import_data(filename)
-    df = df.replace(r'^\s*$', np.nan, regex=True)
-
-    return df
-
 def get_list_scientists_who_do_climate():
 
-    #df = import_google_sheet ('followers_twitter_list_scientists_who_do_science')
-    #if not linked to google spread sheet_instance
-    df = import_data('followers_twitter_list_scientists_who_do_science.csv')
+    df = import_data('members_twitter_list_scientists_who_do_climate'  + '.csv')
+    print('total number of members:', len(df))
     df = df.replace(r'^\s*$', np.nan, regex=True)
 
-    """ Take users with 10k+ followers"""
+    df_protected = df[df['protected'] == True]
+    print(len(df_protected))
 
-    df = df[df['follower_count']>9999]
-    df['username'] = df['username'].str.lower()
-
+    get_stat(df, 95.75, 'follower_count')
+    df = get_top_10k(df, 'follower_count')
+    df= df[~df['protected'].isin([True])]
     list = df['username'].tolist()
-    #print(list)
-    print("The number of Twitter (scientists who do science) handles is", len(list))
 
+    print('List Scientists:', len(list), 'users')
+
+    # #old list
+    #
+    # df_type = import_data('type_users_climate.csv')
+    # df_type['type'] = df_type['type'].astype(int)
+    #
+    # keep_type = [2]
+    # df_type = df_type[df_type['type'].isin(keep_type)]
+    #
+    # list_old = df_type['username'].tolist()
+    # list_diff = [x for x in list if x not in list_old]
+    # print(list_diff)
+
+    return list, df
+
+'''sctivists'''
+def filter_by_profile_description(df, list_keywords):
+
+    df1 = df[df.user_profile_description.apply(lambda tweet: all(words in tweet for words in list_keywords))]
+    list = df1['username'].unique().tolist()
     return list
 
-def get_list_open_feedback():
+def remove_users_COP_list ():
 
-    #df = import_google_sheet ('followers_twitter_desmog_climate')
-    df = import_data ('followers_twitter_desmog_climate.csv')
-    df = df[df['source'] == 'EV']
-    df = df[df['follower_count']>9999]
-    df['username'] = df['username'].str.lower()
-
-    list = df['username'].tolist()
-    print('List Open Feddback:', len(list), 'users')
+    list = ['bjornlomborg', #already in the dataset of desmog
+            'kimjungil1984', #seems fake
+            'dkfordicky', #personal pictures
+            'tonylavs', #other language
+            'rkyte365', #conseil
+            'lisabloom', #lawyer -  mais suivi par extinction rebellion...
+            'charlotte_cymru', #not always climate focused
+            'jeanmanes', #embassador
+            'ecosensenow', #already in the dataset of desmog
+            'geoffreysupran', # among scientists who do climate
+            'janet_rice', #pol
+            'emmanuelfaber' #he changed his discription: "ceo - climate and social business activist" +français
+            ]
 
     return list
 
@@ -228,57 +284,34 @@ def get_list_activists():
     df = import_data('twitter_COP26.csv')
     df = df.dropna(subset = ['user_profile_description'])
     df['user_profile_description'] = df['user_profile_description'].str.lower()
-    df['username'] = df['username'].str.lower()
-    df = df[df['followers_count']>9999]
+    get_stat(df, 81, 'followers_count')
+    df = get_top_10k(df, 'followers_count')
 
-    list_keywords =['climate', 'activist']
-    df1 = df[df.user_profile_description.apply(lambda tweet: all(words in tweet for words in list_keywords))]
-    list_users_cop = df1['username'].unique().tolist()
+    list1 = filter_by_profile_description(df, ['climate', 'activist'])
+    list2 = filter_by_profile_description(df, ['environmentalist'])
+    list3 = filter_by_profile_description(df, ['environmental activist'])
 
-    list_keywords2 = ['environmentalist']
-    df2 = df[df.user_profile_description.apply(lambda tweet: all(words in tweet for words in list_keywords2))]
-    list_users_cop2 = df2['username'].unique().tolist()
-
-    list_keywords3 = ['environmental activist']
-    df3 = df[df.user_profile_description.apply(lambda tweet: all(words in tweet for words in list_keywords3))]
-    list_users_cop3 = df3['username'].unique().tolist()
-
-    A = (set(list_manual) | set(list_users_cop) | set(list_users_cop2) | set(list_users_cop3))
+    A = (set(list_manual) | set(list1) | set(list2) | set(list3))
     final_list = list(A)
 
-    final_list.remove('bjornlomborg') #delayer, in the dataset of desmog!
-    final_list.remove('kimjungil1984') #seems fake
-    final_list.remove('dkfordicky') #pictures of himself
-    final_list.remove('tonylavs') #other language
-    final_list.remove('rkyte365') #conseil
-    final_list.remove('lisabloom') #lawyer hors sujet ? mais suivi par extinction rebellion...
-    final_list.remove('charlotte_cymru') #not always climate focused
-    final_list.remove('jeanmanes') #embassador
-    final_list.remove('ecosensenow') # in the dataset of desmog!
-    final_list.remove('geoffreysupran') # among scientists who do climate
-    final_list.remove('janet_rice') #pol
-    final_list.remove('emmanuelfaber') #he changed his discription: "ceo - climate and social business activist" +français
+    list_remove = remove_users_COP_list ()
+
+    for user in list_remove:
+        final_list.remove(user)
 
     print('cliamte activists:', len(final_list))
-
     return final_list
 
 def main():
 
-    get_twitter_handles_desmog_climate(collection_interupted = 0)
+    #get_twitter_handles_desmog_climate(collection_interupted = 0)
+    #collect_members_from_twitter_list()
+    #get_twitter_handles_desmog_openfeedback()
+    #get_users_followers()
+    #get_list_delayers()
+    #get_list_scientists_who_do_climate()
+    get_list_activists()
 
 if __name__ == '__main__':
 
     main()
-    #get_urls_desmog_list()
-    #get_twitter_handles_desmog_climate(collection_interupted = 0)
-    #get_twitter_handles_desmog_climate(collection_interupted = 0)
-    #get_list_scientists_who_do_climate()
-    #get_list_open_feedback()
-    #et_list_desmog()
-
-    #get_list_top_mentioned_by_type()
-
-    #get_users_followers()
-    #get_list_activists()
-    #get_twitter_handles_desmog_climate()
