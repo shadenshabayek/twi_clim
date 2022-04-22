@@ -2,30 +2,49 @@ import ast
 import pandas as pd
 import numpy as np
 
+pd.options.mode.chained_assignment = None  # default='warn'
+
+from matplotlib import pyplot as plt
 from pandas.api.types import CategoricalDtype
 from ural import get_domain_name
 from utils import (import_data,
                     import_google_sheet,
                     push_to_google_sheet,
                     save_data,
-                    update_truncated_retweets)
+                    save_figure)
+from create_twitter_users_lists import get_lists_and_followers
 
 
 """create initial dataset to be imported to a google spreadsheet for human annotation"""
 
-def get_domain_names_Twitter ():
+def add_type(var1, var2, df):
 
-    df1 = import_data ('twitter_data.csv')
+    list_scientists, list_activists, list_delayers, df_followers = get_lists_and_followers()
+    df[var1] = ''
+    df[var1] = np.where(df[var2].isin(list_scientists), 'scientist', df[var1])
+    df[var1] = np.where(df[var2].isin(list_activists), 'activist', df[var1])
+    df[var1] = np.where(df[var2].isin(list_delayers), 'delayer', df[var1])
 
-    df2 = import_data ('twitter_data_climate.csv')
-    df2 = update_truncated_retweets(df2, 'climate_retweets_full_length_2022_01_24.csv')
+    return df
 
-    df3 = import_data ('twitter_busyDrT_expanded_urls.csv')
-    df3 = df3.iloc[1:]
+def get_domain_names_Twitter (type):
 
-    df = pd.concat([df1, df2, df3], axis=0, ignore_index=True)
+    df = import_data ('twitter_data_climate_tweets_2022_03_15.csv')
+    df = add_type('type', 'username', df)
+    print('number of tweets', len(df))
+    #print(df.columns)
+
+    if type == 'scientist':
+        df = df[df['type'].isin(['scientist'])]
+    elif type == 'activist':
+        df = df[df['type'].isin(['activist'])]
+    elif type == 'delayer':
+        df = df[df['type'].isin(['delayer'])]
+
+    df['positive_engagement'] = df['retweet_count'] + df['like_count']
+
     df = df.dropna(subset=['domain_name'])
-    df = df[['username', 'domain_name', 'expanded_urls', 'type_of_tweet', 'id', 'text']]
+    df = df[['username', 'domain_name', 'expanded_urls', 'type_of_tweet', 'id', 'text', 'positive_engagement']]
 
     for index, row in df.iterrows():
         df.at[index, 'domain_name']=ast.literal_eval(row['domain_name'])
@@ -33,206 +52,162 @@ def get_domain_names_Twitter ():
     df=df.explode('domain_name')
 
     a = ['twitter.com']
+    print('number of tweets containing a tw link', df[df['domain_name'].isin(a)]['domain_name'].count())
+
     df = df[~df['domain_name'].isin(a)]
     df = df.dropna(subset=['domain_name'])
     df['username'] = df['username'].str.lower()
-
+    print('number of tweets containing a link excluding Tw', df['expanded_urls'].count())
     print('There are', df['domain_name'].nunique(), 'unique domain names, out of', df['domain_name'].count())
 
     return df
 
-def get_MBFC_from_iffy():
+def get_domains_ratings (type):
 
-    df = import_data('iffy_misinfo_domains_10_03_2021.csv')
-    df = df.drop(['BF', 'FC', 'MBFC','PF', 'WI','Site Rank', '✓s', 'W', 'Name'], axis=1)
-    df = df.rename(columns={"MBFC factual": "MBFC_factual", "Domain": "domain_name"})
+    rating = 'third_aggregation'
 
-    return df
+    df1 = import_google_sheet ('domain_names_rating')
+    df1 = df1.replace(r'^\s*$', np.nan, regex=True)
 
-def get_domains_with_no_rating (df, df_ratings, rating):
+    df_ratings = get_domain_names_Twitter (type)
 
-    #rating = 'MBFC_factual'
+    df_ratings[rating] = ''
 
-    df[rating]=''
+    df_ratings.set_index('domain_name', inplace=True)
+    df_ratings.update(df1.set_index('domain_name'))
+    df_ratings=df_ratings.reset_index()
 
-    df.set_index('domain_name', inplace=True)
-    df.update(df_ratings.set_index('domain_name'))
-    df=df.reset_index()
+    df_ratings[rating] = df_ratings[rating].replace('','unrated')
+    summary_ratings = df_ratings.groupby([rating], as_index = False).size().sort_values(by = 'size', ascending = False)
+    print(summary_ratings)
 
-    df[rating] = df[rating].replace('','unrated')
-    df[rating] = df[rating].fillna('unrated')
+    total_number_of_links = len(df_ratings)
+    print('Number of links contained in tweets, with repetitions', total_number_of_links)
 
-    df_stat=df.groupby([rating], as_index=False).size()
+    df_unrated = df_ratings[df_ratings[rating] == 'unrated']
+    #print(df_ratings.info())
+    #print(df_ratings['id'].nunique())
+    print(df_ratings.groupby(['third_aggregation'], as_index = False)['positive_engagement'].mean())
 
-    cat_order = CategoricalDtype([
-                                "very-low",
-                                "low",
-                                "mixed",
-                                "unrated",
-                                "unrated_old",
-                                "(satire)",
-                                "mostly-factual",
-                                "high",
-                                "very-high"
-                                ], ordered = True)
+    return df_ratings, df_unrated, total_number_of_links, summary_ratings
 
-    df_stat[rating] = df_stat[rating].astype(cat_order)
-    df_stat=df_stat.sort_values(rating)
+def get_domains_categories (type):
 
-    df[rating] = df[rating].astype(cat_order)
-    df = df.sort_values(by=rating, ascending=True)
+    df_ratings, df_unrated, total_number_of_links, summary_ratings = get_domains_ratings (type)
 
-    find = df[df[rating] == 'unrated']
-    find = find.groupby(['domain_name'], as_index = False).size().sort_values(by='size', ascending=False)
-    find = find.rename(columns={"size": "repetition"})
+    df1 = import_google_sheet ('domain_names_rating')
+    #print('number of unique domain names', df1['domain_name'].nunique())
+    df1 = df1.replace(r'^\s*$', np.nan, regex=True)
 
-    #save_data(find, 'unknown_ratings_twitter_domain_names.csv', 0)
+    df_unrated['category']=''
 
-    print(df_stat)
-    print(find.head(10))
+    df_unrated.set_index('domain_name', inplace=True)
+    df_unrated.update(df1.set_index('domain_name'))
+    df_unrated=df_unrated.reset_index()
 
-    return find
+    df_unrated['category'] = df_unrated['category'].replace('','uncategorized')
 
-"""Human annotation
+    #remove = ['uncategorized']
+    #df2 = df2[~df2['category'].isin(remove)]
+    print('number of unrated links with repetition', len(df_unrated))
+    summary_categories_unrated = df_unrated.groupby(['category'], as_index = False).size().sort_values(by = 'size', ascending = False)
+    print(summary_categories_unrated)
+    print( 'share of uncategorized and unrated', len(df_unrated[df_unrated['category'] == 'uncategorized'])/total_number_of_links)
+    print('unique links', df_unrated[df_unrated['category'] == 'uncategorized']['domain_name'].nunique() )
+    #print(df_unrated[df_unrated['category'] == 'uncategorized'].groupby(['domain_name'], as_index = False).size().sort_values(by = 'size', ascending = False).head(50))
 
-Step 1: open 'unknown_ratings_twitter_domain_names.csv'
+    return df_unrated, summary_categories_unrated, summary_ratings
 
-Step 2: manually look on MBFC website for missing ratings that are the most repeated
-save as 'missing_mbfc_ratings.csv'
+def create_donut(x, y, df, figure_name, title, type_title, colormap):
 
-examples:
-channelnewsasia.com  was cited 69293 times and had a rating on the MBFC website
-jpost.com was cited 47794 times and had a rating on the MBFC website
-dailycaller.com was cited 25702 times and had a rating on the MBFC website
+    fig, ax = plt.subplots(figsize=(6, 15), subplot_kw=dict(aspect="equal"))
 
-Step 3: manually create categories for top repeated unrated websites such as gov/platforms
-save as 'categories.csv'
+    df = df
 
-examples:
-youtube.com was cited 11825 so we assigned it to the category platform
-amazon.com was cited  1215 so we assigned it to the category commercial_books
-"""
+    l = len(df[x].to_list())
+    list_labels =[]
+    for i in range(0,l):
+        a = df[x].to_list()[i] + ' (' + str(df[y].to_list()[i]) + ')'
+        list_labels.append(a)
 
-def get_ratings ():
+    ratings = list_labels
+    data = df[y].to_list()
 
-    df1 = get_MBFC_from_iffy()
-    df2 = import_data('missing_mbfc_ratings.csv')
+    #cmap = plt.get_cmap('cool')
+    #cmap = plt.get_cmap('Greens')
+    cmap = plt.get_cmap(colormap)
+    colors = [cmap(i) for i in np.linspace(0, 1, 7)]
 
-    df = pd.concat([df1, df2],
-                        axis=0,
-                        ignore_index=True)
+    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.4), startangle=230, colors = colors)
 
-    df = df.sort_values(by='MBFC_factual', ascending=False)
+    bbox_props = dict(boxstyle="square,pad=0.2", fc="w", ec="k", lw=0.72)
 
-    return df
+    kw = dict(arrowprops=dict(arrowstyle="-"),
+              bbox=bbox_props, zorder=0, va="center")
 
-def create_initial_ratings_categories_csv(rating = 'MBFC_factual'):
+    plt.text(0, 0, '{}'.format(type_title), ha='center', va='center', fontsize=14)
 
-    df = get_domain_names_Twitter ()
+    for i, p in enumerate(wedges):
 
-    df_ratings = get_ratings ()
-    df1 = get_domains_with_no_rating (df, df_ratings, rating)
+        ang = (p.theta2 - p.theta1)/2. + p.theta1
+        y = np.sin(np.deg2rad(ang))
+        x = np.cos(np.deg2rad(ang))
+        horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+        connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+        kw["arrowprops"].update({"connectionstyle": connectionstyle})
+        ax.annotate(ratings[i], xy=(x, y), xytext=(1.3*np.sign(x), 1.3*y),
+                    horizontalalignment=horizontalalignment, **kw)
 
-    print(df1.head(10))
-    print('there are', df1['domain_name'].nunique(), 'unique unrated domain names in the initial dataset')
+    save_figure(figure_name)
 
-    df2 = import_data("categories.csv")
-    categories = df2['domain_name'].tolist()
+def create_donut_by_group(type, type_title, colormap, type_df):
 
-    df3 = df1[~df1['domain_name'].isin(categories)]
+    df_unrated, summary_categories_unrated, summary_ratings = get_domains_categories (type = type)
 
-    print(df3.sort_values(by='repetition', ascending=False).head(60))
-    print('there are', df3['domain_name'].nunique(), 'remaining unique unretaed domain names')
+    if type_df == 'rating':
+        create_donut(x = 'third_aggregation',
+                          y = 'size',
+                          df = summary_ratings,
+                          figure_name = 'summary_ratings_climate_{}'.format(type),
+                          title = '',
+                          type_title = type_title,
+                          colormap = colormap)
 
-    df_google = pd.concat([df_ratings, df2, df3], axis=0, ignore_index=True)
-    #df_google['repetition'] = df_google['repetition'].astype('int')
-    #save_data(df_google, "domain_names_rating.csv", 0)
+    elif type_df == 'category':
+        create_donut(x = 'category',
+                          y = 'size',
+                          df = summary_categories_unrated,
+                          figure_name = 'summary_categories_climate_{}'.format(type),
+                          title = '',
+                          type_title = type_title,
+                          colormap = colormap)
 
-    return df_google
+def create_figures():
 
-"""update google spreadsheet if tweets including new websites are collected"""
+    create_donut_by_group(type = 'scientist',
+                            type_title = 'Scientists',
+                            colormap = 'Greens',
+                            type_df = 'category')
 
-#def update_google_sheet(filename, rating, sheet_title):
-def update_google_sheet(filename, rating):
+    create_donut_by_group(type = 'activist',
+                            type_title = 'Activists',
+                            colormap = 'Oranges',
+                            type_df = 'category')
 
-    df = get_domain_names_Twitter ()
+    create_donut_by_group(type = 'delayer',
+                            type_title = 'Delayers',
+                            colormap = 'Reds',
+                            type_df = 'category')
 
-    rating = 'aggregated_rating'
-
-    df_google = import_google_sheet ('domain_names_rating')
-    df_google = df_google.replace(r'^\s*$', np.nan, regex=True)
-    df_google[rating] = df_google[rating].fillna('unrated_old')
-    #print(df_google.head(20))
-
-    df_ratings = df_google.dropna(subset=[rating])
-    df_ratings = df_google[['domain_name', rating]]
-    #print(df_ratings.head(20))
-
-    df1 = get_domains_with_no_rating (df, df_ratings, rating)
-
-    df_categories = df_google.dropna(subset=['category'])
-    categories = df_categories['domain_name'].tolist()
-
-    df2 = df1[~df1['domain_name'].isin(categories)]
-
-    # push_to_google_sheet (filename = filename,
-    #                        sheet_title = sheet_title,
-    #                        sheet_number = 3,
-    #                        df = df2,
-    #                        new_worksheet = 1)
-
-    print(df2.info())
-    print(df2.head(60))
-    return df2
-
-"""safety checks"""
-def double_check_ratings_google_sheet():
-
-    df_googlesheet = import_google_sheet ('domain_names_rating')
-    df_googlesheet = df_googlesheet.replace(r'^\s*$', np.nan, regex=True)
-    df_googlesheet = df_googlesheet.dropna(subset=['MBFC_factual'])
-
-    df = create_initial_ratings_categories_csv()
-    df = df.dropna(subset=['MBFC_factual'])
-
-    check = df.merge(df_googlesheet, how = 'inner', on = ['domain_name'])
-
-    print(check['MBFC_factual_x'].equals(check['MBFC_factual_y']))
-
-def check_misinformation_links_ratings():
-
-    df_OF = import_data('unreliable_media.csv')
-    df_OF['url'] = df_OF['url'].astype(str)
-
-    for index, row in df_OF.iterrows():
-        df_OF.at[index, 'domain_name']=get_domain_name(row['url'])
-
-    df_OF = df_OF.drop(['url','appearancesCount'], axis=1)
-
-    remove = ['facebook.com', 't.me', 'wordpress.com']
-    df_OF = df_OF[~df_OF['domain_name'].isin(remove)]
-
-    df_googlesheet = import_google_sheet ('domain_names_rating')
-    df_googlesheet = df_googlesheet.replace(r'^\s*$', np.nan, regex=True)
-
-    check = df_googlesheet.merge(df_OF, how = 'inner', on = ['domain_name'])
-    check = check[['domain_name', 'repetition', 'aggregated_rating', 'name', 'misinformationAppearancesCount']].sort_values(by='aggregated_rating', ascending=False).reset_index()
-    check = check.drop(['index'], axis=1)
-    check=check.fillna('')
-
-    push_to_google_sheet (filename = 'domain_names_rating',
-                           sheet_title = 'open_feedback',
-                           sheet_number = 2,
-                           df = check,
-                           new_worksheet = 1)
-
-
-""" Check repitions only for climate"""
-
+    create_donut_by_group(type = 'all',
+                            type_title = 'All groups',
+                            colormap = 'cool',
+                            type_df = 'category')
 
 if __name__ == '__main__':
 
-    #double_check_ratings_google_sheet()
-    #check_misinformation_links_ratings()
-    #update_google_sheet(filename = 'domain_names_rating', rating = 'aggregated_rating', sheet_title = 'new_domain_names')
-    update_google_sheet(filename = 'domain_names_rating', rating = 'aggregated_rating')
+    #create_figures()
+    get_domains_ratings (type = 'all')
+    get_domains_ratings (type = 'scientist')
+    get_domains_ratings (type = 'activist')
+    get_domains_ratings (type = 'delayer')

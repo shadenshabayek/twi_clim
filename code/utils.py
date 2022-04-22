@@ -34,7 +34,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 '''Functions to collect historical search twitter data from the API v2'''
 
-#documentation: https://developer.twitter.com/en/docs/twitter-api/tweets/search/api-reference/get-tweets-search-all
 #300 requests per 15-minute window (app auth)
 #Updates: max results is now 100!
 
@@ -553,11 +552,10 @@ def import_data(file_name):
     return df
 
 def import_dict(file_name):
-#use this function to import dictionnary which contains handle equivalents accross platform x and Twitter.
+
     file_name = file_name + '.pkl'
     data_path = os.path.join('.', 'data', file_name)
     #dict = np.load(data_path, allow_pickle='TRUE').item()
-    #return dict
     a_file = open(data_path, "rb")
     dict = pickle.load(a_file)
     return dict
@@ -572,11 +570,12 @@ def save_dict(file_name, dict):
     # a_file = open("dict2.pkl", "rb")
     # dict2 = pickle.load(a_file)
     print(file_name, 'is saved')
+
 def save_figure(figure_name):
 
     figure_path = os.path.join('.', 'figures', figure_name)
     plt.savefig(figure_path, bbox_inches='tight')
-    #print('The '{}' figure is saved.'.format(figure_name))
+    #print('The {} figure is saved.'.format(figure_name))
 
 def save_data(df, file_name, append):
 
@@ -587,7 +586,7 @@ def save_data(df, file_name, append):
     else:
         df.to_csv(file_path, index=False)
 
-    #print(' '{}' is saved.'.format(file_name))
+    print(' {} is saved.'.format(file_name))
 
 ''' Use google sheet via the Google sheet API '''
 
@@ -753,133 +752,14 @@ def get_user_metrics(bearer_token, list, filename, source):
         write_results_user_metrics(json_response, filename, user, source)
         sleep(3)
 
-'''Get list members by list id on twitter , API V1'''
-'''Problem with this function to be fixed'''
-
-# def connect_to_endpoint_list(list_id, bearer_token, next_token = None):
-#
-#     #count up to 5000 per call
-#     max_results = 100
-#     headers = {'Authorization': 'Bearer {}'.format(bearer_token)}
-#
-#     if next_token is not None:
-#     #if next_cursor!= -1 :
-#         #url = 'https://api.twitter.com/1.1/lists/members.json?list_id={}&cursor={}&count=3200'.format(list_id, next_cursor)
-#         url = "https://api.twitter.com/2/lists/{}/members?max_results={}&next_token={}".format(list_id, max_results, next_token)
-#     #elif next_cursor == 0:
-#     else:
-#         url = "https://api.twitter.com/2/lists/{}/members?max_results={}".format(list_id, max_results)
-#     # else:
-#     #     url = 'https://api.twitter.com/1.1/lists/members.json?list_id={}&count=1000'.format(list_id)
-#
-#     with requests.request('GET', url, headers=headers) as response:
-#
-#         if response.status_code != 200:
-#             raise Exception(response.status_code, response.text)
-#
-#         return response.json()
-#
-# def write_results_lists(json_response, filename):
-#
-#     with open(filename, "a+") as tweet_file:
-#
-#         writer = csv.DictWriter(tweet_file,
-#                                 ["screen_name",
-#                                 "protected",
-#                                 "url",
-#                                 "name",
-#                                 "id",
-#                                 "location",
-#                                 "created_at",
-#                                 "description",
-#                                 "collection_date",
-#                                 "collection_method",
-#                                 "type_user"], extrasaction='ignore')
-#
-#         if "data"  in json_response:
-#
-#             for user in json_response["data"]:
-#                 #print(json_response.keys())
-#                 #print(json_response)
-#                 timestr = time.strftime("%Y-%m-%d")
-#                 user["collection_date"] = timestr
-#                 user["collection_method"] = 'Twitter API V2'
-#                 user["type_user"] = 'Twitter list: scientists who do climate'
-#                 writer.writerow(user)
-#
-#
-#         else:
-#             pass
-#
-#
-# def get_next_token_lists(list_id, token, filename, bearer_token):
-#
-#     json_response = connect_to_endpoint_list(list_id, bearer_token, token)
-#     print(json_response)
-#     result_count = json_response['meta']['result_count']
-#     print(result_count)
-#     if 'next_token' in json_response['meta']:
-#         sleep(60)
-#         next_token = json_response['meta']['next_token']
-#         if result_count is not None and result_count > 0:
-#             count += result_count
-#             print(count)
-#         #try:
-#         write_results_lists(json_response, filename)
-#         return next_token, count
-#     else:
-#         write_results_lists(json_response, filename)
-#         return None, count
-#
-# def get_list_members(filename, list_id, bearer_token) :
-#
-#     file_exists = os.path.isfile(filename)
-#
-#     flag = True
-#
-#     with open(filename, 'a') as tweet_file:
-#
-#         writer = csv.DictWriter(tweet_file,
-#                      ['screen_name',
-#                      'lang',
-#                      'followers_count',
-#                      'friends_count',
-#                      'protected',
-#                      'url',
-#                      'name',
-#                      'id',
-#                      'location',
-#                      'created_at',
-#                      'description',
-#                      "collection_date",
-#                      "collection_method",
-#                      "type_user"], extrasaction='ignore')
-#
-#         if not file_exists:
-#
-#             writer.writeheader()
-#
-#     try:
-#         next_token = get_next_token_lists(list_id, None, filename, bearer_token)
-#
-#     except ValueError as error:
-#         print(type(error), error)
-#
-#     while flag:
-#         next_token = get_next_token_lists(list_id, next_token, filename, bearer_token)
+'''Get list members by list id on twitter '''
 
 def connect_to_endpoint_list(list_id, bearer_token):
 
     #count up to 5000 per call
 
     headers = {"Authorization": "Bearer {}".format(bearer_token)}
-    #if (next_cursor is not None):
-    #if next_cursor!= -1 :
     url = "https://api.twitter.com/1.1/lists/members.json?list_id={}&count=3200".format(list_id)
-    #elif next_cursor == 0:
-    #    print('stop')
-    # else:
-    #     url = "https://api.twitter.com/1.1/lists/members.json?list_id={}&count=1000".format(list_id)
 
     with requests.request("GET", url, headers=headers) as response:
 
@@ -912,8 +792,7 @@ def write_results_user_metrics_lists(json_response, filename):
         if "users"  in json_response:
 
             for user in json_response["users"]:
-                #print(json_response.keys())
-                #print(json_response)
+
                 user['tweet_count'] = user['statuses_count']
                 user['follower_count'] = user['followers_count']
                 user['following_count'] = user['friends_count']
@@ -926,7 +805,6 @@ def write_results_user_metrics_lists(json_response, filename):
 
         else:
             pass
-
 
 def get_list_members(filename, list_id, bearer_token) :
 
@@ -963,13 +841,163 @@ def get_list_members(filename, list_id, bearer_token) :
             if json_response['next_cursor'] == 0:
                 flag = False
 
-# if __name__ == "__main__":
-#
-#     load_dotenv()
-#     bearer_token= os.getenv('TWITTER_TOKEN')
-#     list_id = 1053067173961326594
-#     file_name = 'members_twitter_list_scientists_who_do_climate'  + '.csv'
-#     filename = os.path.join('.', 'data', file_name)
-#     #json_response = connect_to_endpoint_list(list_id, bearer_token)
-#     #print(json_response)
-#     get_list_members(filename, list_id, bearer_token)
+'''liked tweets'''
+
+def connect_to_endpoint_liked_tweets(bearer_token, user_id, next_token=None):
+    #rate limit 75 calls per 15min window.
+    #order of likes: most recent
+    max_results = 100
+
+    headers = {"Authorization": "Bearer {}".format(bearer_token)}
+
+    params = {"tweet.fields" : "created_at,author_id",
+              "user.fields":"created_at,id,name,username,public_metrics",
+              "expansions": "author_id"}
+
+    if (next_token is not None):
+        url = "https://api.twitter.com/2/users/{}/liked_tweets?max_results={}&pagination_token={}".format(user_id, max_results, next_token)
+    else:
+        url = "https://api.twitter.com/2/users/{}/liked_tweets?max_results={}".format(user_id, max_results)
+
+    with requests.request("GET", url, params=params, headers=headers) as response:
+
+        if response.status_code != 200:
+            raise Exception(response.status_code, response.text)
+        return response.json()
+
+def write_results_liked_tweets(json_response, filename, author_id, author_name, list_individuals):
+
+    with open(filename, "a+") as tweet_file:
+
+        writer = csv.DictWriter(tweet_file,
+                                ["source_username_id",
+                                "source_username",
+                                "tweet_created_at",
+                                "id",
+                                "text",
+                                "liked_tweet_author_id",
+                                "liked_tweet_author_name",
+                                "liked_tweet_author_username",
+                                "liked_tweet_author_username_within_list",
+                                "liked_tweet_author_created_at",
+                                "liked_tweet_author_following_count",
+                                "liked_tweet_author_followers_count",
+                                "liked_tweet_author_tweet_count",
+                                "collection_date",
+                                "collection_method"], extrasaction='ignore')
+
+        if 'data' and 'includes' in json_response:
+
+            for tweet in json_response['data']:
+
+                if 'public_metrics' in tweet.keys():
+
+                    tweet['followers_count'] = tweet['public_metrics']["followers_count"]
+                    tweet['following_count'] = tweet['public_metrics']["following_count"]
+                    tweet['tweet_count'] = tweet['public_metrics']["tweet_count"]
+
+                tweet['tweet_created_at'] = tweet['created_at']
+                tweet["liked_tweet_author_id"] = tweet['author_id']
+
+                if 'users' in json_response['includes']:
+                    for user in json_response['includes']['users']:
+
+                        if tweet["liked_tweet_author_id"] == user['id']:
+                            tweet['liked_tweet_author_username'] = user['username'].lower()
+                            tweet["liked_tweet_author_name"] = user['name'].lower()
+                            tweet["liked_tweet_author_created_at"] = user['created_at']
+
+                            if 'public_metrics' in user.keys():
+
+                                tweet['liked_tweet_author_followers_count'] = user['public_metrics']["followers_count"]
+                                tweet['liked_tweet_author_following_count'] = user['public_metrics']["following_count"]
+                                tweet['liked_tweet_author_tweet_count'] = user['public_metrics']["tweet_count"]
+
+
+                a = tweet['liked_tweet_author_username'].lower()
+
+                if a in list_individuals :
+                    tweet['liked_tweet_author_username_within_list'] = a
+
+                timestr = time.strftime("%Y-%m-%d")
+
+                tweet["collection_date"] = timestr
+                tweet["collection_method"] = "Twitter API V2"
+                tweet["source_username_id"] = author_id
+                tweet['source_username'] = author_name
+
+                writer.writerow(tweet)
+
+        else:
+            pass
+
+def get_next_token_liked_tweets(list_individuals, author_id, author_name, token, count, filename, bearer_token):
+
+    json_response = connect_to_endpoint_liked_tweets(bearer_token, author_id, token)
+    #print(json_response)
+    #print(json_response.keys())
+    if 'meta' in json_response:
+        result_count = json_response['meta']['result_count']
+
+        if 'next_token' in json_response['meta']:
+
+            #sleep(62)
+            next_token = json_response['meta']['next_token']
+
+            #print(next_token)
+            if result_count is not None and result_count > 0:
+
+                count += result_count
+                print(count)
+            #try:
+            write_results_liked_tweets(json_response, filename, author_id, author_name, list_individuals)
+            return next_token, count
+        else:
+            write_results_liked_tweets(json_response, filename, author_id, author_name, list_individuals)
+            return None, count
+    else:
+        pass
+    # elif 'errors' in json_response:
+    #     print(json_response['errors'][0]['title'])
+    #     print(author_id, author_name, 'check this individual')
+    #     pass
+
+def collect_liked_tweets_data(list_individuals, author_id, author_name, bearer_token, filename):
+    print(author_id)
+
+    flag = True
+    count = 0
+    file_exists = os.path.isfile(filename)
+
+    with open(filename, "a+") as tweet_file:
+
+        writer = csv.DictWriter(tweet_file,
+                                ["source_username_id",
+                                "source_username",
+                                "tweet_created_at",
+                                "id",
+                                "text",
+                                "liked_tweet_author_id",
+                                "liked_tweet_author_name",
+                                "liked_tweet_author_username",
+                                "liked_tweet_author_username_within_list",
+                                "liked_tweet_author_created_at",
+                                "following_count",
+                                "followers_count",
+                                "tweet_count",
+                                "collection_date",
+                                "collection_method"], extrasaction='ignore')
+        if not file_exists:
+            writer.writeheader()
+
+    next_token = None
+
+    while flag:
+        next_token, count = get_next_token_liked_tweets(list_individuals, author_id, author_name, next_token, count, filename, bearer_token)
+        if count > 80:
+            break
+        if next_token is None:
+            flag = False
+
+
+    print("Total liked tweets saved: {}".format(count))

@@ -20,6 +20,7 @@ import umap.plot
 from plotly.colors import n_colors
 import os
 
+
 """ important note : open in an env with python 3.7 (anaconda) """
 
 def import_data(file_name):
@@ -41,22 +42,29 @@ def save_data(df, file_name, append):
 
 def save_figure(figure_name):
 
-    figure_path = os.path.join('.', 'figure', figure_name)
+    figure_path = os.path.join('.', 'figures', figure_name)
     plt.savefig(figure_path, bbox_inches='tight')
-    print("The '{}' figure is saved.".format(figure_name))
+    print("The {} figure is saved.".format(figure_name))
 
-def keep_three_groups(df):
+def get_tweets_by_type():
 
-    df1 = import_data('type_users_climate.csv')
-    df1['type'] = df1['type'].astype(int)
-    df2 = df.merge(df1, how = 'inner', on = ['username'])
+    df  = import_data('twitter_data_climate_tweets_2022_03_15.csv')
+    df = df[~df['query'].isin(['f'])]
 
-    keep_type = [1, 2, 4]
-    df2 = df2[df2['type'].isin(keep_type)]
+    #list_scientists, list_activists, list_delayers, df_followers = get_lists_and_followers()
+    df_users = import_data('climate_groups_followers.csv')
+    list_scientists = df_users[df_users['source'].isin(['twitter_list_scientists_who_do_climate'])]['username'].tolist()
+    list_activists = df_users[df_users['source'].isin(['cop26_hashtag'])]['username'].tolist()
+    list_delayers = df_users[df_users['source'].isin(['desmog_climate_database', 'open_feedback'])]['username'].tolist()
 
-    print(df2.groupby(['type']).size())
+    df['type'] = ''
+    df['type'] = np.where(df['username'].isin(list_scientists), 'scientist', df['type'])
+    df['type'] = np.where(df['username'].isin(list_activists), 'activist', df['type'])
+    df['type'] = np.where(df['username'].isin(list_delayers), 'delayer', df['type'])
 
-    return df2
+    print(df[~df['type'].isin(['scientist', 'activist','delayer'])]['username'].unique())
+    print(df.groupby(['type'], as_index = False).size())
+    return df
 
 def get_url_free_text(text):
 
@@ -164,22 +172,19 @@ def remove_tweets (df, remove_covid, set_topic_climate, remove_mentions):
 
     return df
 
-def get_documents(remove_covid, set_topic_climate, remove_mentions, all_time, cop26):
+def get_documents(remove_covid, set_topic_climate, remove_mentions, cop26):
 
-    if all_time == 1:
-        df = import_data('twitter_data_climate_tweets_2022_03_15.csv')
-        df['username'] = df['username'].str.lower()
-        df['date'] = pd.to_datetime(df['created_at']).dt.date
-        #df = df[(df['date']> date(2021, 4, 15)) & (df['date']<date(2021, 8, 15))]
-        #df = df.reset_index()
-        print('total number of tweets', len(df))
+    timestr = time.strftime("%Y_%m_%d")
 
-    elif cop26 == 1:
-        df = import_data('twitter_data_climate_users_cop26.csv')
-        df['username'] = df['username'].str.lower()
+    df = get_tweets_by_type()
+    df['date'] = pd.to_datetime(df['created_at']).dt.date
+    print('total number of tweets', len(df))
+
+    if cop26 == 1:
+        df = df[(df['date']> date(2021, 10, 30)) & (df['date']<date(2021, 11, 13))]
+        df = df.reset_index()
         print('total number of tweets COP26', len(df))
 
-    df = keep_three_groups(df)
     print('total number of users', df['username'].nunique())
 
     df = remove_tweets (df, remove_covid, set_topic_climate, remove_mentions)
@@ -198,41 +203,36 @@ def get_documents(remove_covid, set_topic_climate, remove_mentions, all_time, co
         df_tweets = df_tweets.append({
                     'username': user,
                     'text_tweets_concat': document,
-                    'type': type}, ignore_index=True)
+                    'type': type},
+                    ignore_index=True)
 
     print(df_tweets.groupby(['type']).size())
 
-    if all_time == 1:
-
-        timestr = time.strftime("%Y_%m_%d")
-        title = 'df_tweets_climate_3groups_concat_' + timestr + '.csv'
-        save_data(df_tweets, title, 0)
-
-    elif cop26 == 1:
-
-        timestr = time.strftime("%Y_%m_%d")
+    if cop26 == 1:
         title = 'df_tweets_cop26_3groups_concat_' + timestr + '.csv'
+        save_data(df_tweets, title, 0)
+    else :
+        title = 'df_tweets_climate_3groups_concat_' + timestr + '.csv'
         save_data(df_tweets, title, 0)
 
     return df_tweets
 
-def get_doc_top2vec(all_time, cop26):
+def get_doc_top2vec(cop26):
 
-    if all_time == 1:
+    timestr = time.strftime("%Y_%m_%d")
 
-        timestr = time.strftime("%Y_%m_%d")
+    if cop26 == 0:
+
         title = 'df_tweets_climate_3groups_concat_' + timestr + '.csv'
-        #df = import_data(title)
-        #df = get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, all_time = 1, cop26 = 0)
+        df = import_data(title)
+        #df = get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, cop26 = 0)
         df['length']=df['text_tweets_concat'].apply(len)
-        df=df[df['length']>2000]
+        df=df[df['length']>840] #140*6
 
     elif cop26 == 1:
-
-        timestr = time.strftime("%Y_%m_%d")
         title = 'df_tweets_cop26_3groups_concat_' + timestr + '.csv'
         df = import_data(title)
-        #df = get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, all_time = 0, cop26 = 1)
+        #df = get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, cop26 = 1)
         df['length']=df['text_tweets_concat'].apply(len)
         df = df[df['length']>140]
 
@@ -246,7 +246,7 @@ def bigrammer(doc):
     #sentence_stream = doc.split(" ")
     min_count=20
 
-    df = get_doc_top2vec(all_time = 0, cop26 = 1)
+    df = get_doc_top2vec(cop26 = 1)
     docs=df['text_tweets_concat'].values
 
     sentence_stream = [[x for x in doc.replace('\n',' ').split(" ") if len(x)>2] for doc in docs]
@@ -257,9 +257,9 @@ def bigrammer(doc):
 
     return bigram_phraser[sentence_stream]
 
-def test_top2vec():
+def run_top2vec():
 
-    df = get_doc_top2vec(all_time = 0, cop26 = 1)
+    df = get_doc_top2vec(cop26 = 1)
 
     """
     min_count (int (Optional, default 50)) – Ignores all words with total fre-
@@ -276,7 +276,7 @@ def test_top2vec():
                     hdbscan_args={"min_cluster_size":5})#Shaden replaced 20 by 10 #Setting the min cluster size of HDBscan algorithm to 30 to avoid getting too many clusters
 
     timestr = time.strftime("%Y_%m_%d")
-    title = './top2vec/climate_topics_' + timestr + '.mod'
+    title = './top2vec/climate_topics_cop26_' + timestr + '.mod'
     model.save(title)
 
 def play_with_top2vec(model_title):
@@ -328,12 +328,12 @@ def br(strin):
     #print (list(chunks))
     return '<br>'.join(list(chunks))#strin.replace('\n','<br>').replace('. ','.<br>')
 
-def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_title_users):
+def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_title_users, cop26):
 
     timestr = time.strftime("%Y_%m_%d")
     model = Top2Vec.load(model_title)
 
-    df = get_doc_top2vec(all_time = 0, cop26 = 1)
+    df = get_doc_top2vec(cop26)
     #topic_sizes, topic_nums = model.get_topic_sizes()
 
     N, color_map, legende_dict = play_with_top2vec(model_title)
@@ -353,8 +353,8 @@ def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_
 
     df_px=pd.DataFrame({'x':umap_model.embedding_[:,0],'y':umap_model.embedding_[:,1],'username':df['username'].tolist(), 'type':df['type'].tolist(), 'Topic_Number':list(map(lambda x:str(x),model.doc_top)), 'Topic_Name':list(map(lambda x:'Topic ' + str(x) + ': '+ legende_dict[x],model.doc_top)), "Description":df['Description_br'].tolist()})
 
-    #title = 'dftop2vec_coordinates_3_' + timestr + '.csv'
-    #save_data(df_px, title, 0)
+    title = 'dftop2vec_coordinates_{}_'.format(cop26) + timestr + '.csv'
+    save_data(df_px, title, 0)
 
     if plot_topics == 1:
 
@@ -362,7 +362,7 @@ def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_
         cold_map={}
 
         for i in range(N):
-            cold_map["Topic "+str(i)+': '+legende_dict[i]]=mcolors.rgb2hex(color_map[N-1-i])
+            cold_map["Topic "+ str(i)+': '+legende_dict[i]]=mcolors.rgb2hex(color_map[N-1-i])
             cold.append(mcolors.rgb2hex(color_map[N-1-i]))
 
         df_px ['dummy_column_for_size'] = 3.5
@@ -383,14 +383,13 @@ def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_
         df_px ['dummy_column_for_size'] = 0.05
 
         df_px['type'] = df_px['type'].astype(str)
-        #symbols = ["8", "7", "108", "102", "107", "17"]
         symbols = ["0", "1", "2", "3", "5", "14", "17", "8", "6", "7", "8", "13"]
         fig2=px.scatter(df_px,
                         x='x',
                         y='y',
                         size = 'dummy_column_for_size',
                         color='type',
-                        color_discrete_map={"1": "lightcoral", "2": "palegreen", "4": "moccasin"},
+                        color_discrete_map={"scientist": "palegreen", "activist": "moccasin", "delayer": "lightcoral"},
                         hover_name="Topic_Name",
                         hover_data=["username", "type", "Description"],
                         opacity=.7,
@@ -408,7 +407,6 @@ def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_
                 color="#7f7f7f"
             )))
 
-        #figure_title_topics = './top2vec/global_embedding_color_by_topic_'
         fig1.write_html(figure_title_topics + timestr + '.html', auto_open=True)
 
         fig2.update_layout(legend=dict(
@@ -427,10 +425,10 @@ def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_
         #fig.show()
         #save_figure('global_embedding_climate.jpg')
 
-def get_hierarchy_of_topics(model_title, dendro_title, model_scores_title):
+def get_hierarchy_of_topics(model_title, dendro_title, model_scores_title, cop26):
 
     #timestr = '2022_01_27'
-    df = get_doc_top2vec(all_time = 0, cop26 = 1)
+    df = get_doc_top2vec(cop26)
     print(len(df))
     model = Top2Vec.load(model_title)
     N, color_map, legende_dict = play_with_top2vec(model_title)
@@ -492,14 +490,14 @@ def plot_topic_prevelance_by_type(model_title, coord_title, figure_title):
     print(legende_dict)
 
     #plt.figure(figsize=(8,N/4))
-    ax = df.groupby('type').Topic_Number.value_counts().unstack(0).plot.barh(color = ['lightcoral','palegreen','moccasin'])
+    ax = df.groupby('type').Topic_Number.value_counts().unstack(0).plot.barh(color = ['moccasin', 'lightcoral', 'palegreen'])
     ax.set(ylabel=None)
     # for color, bar in zip(['lightcoral','palegreen','moccasin'], ax.patches):
     #     bar.set_color(color)
 
     plt.yticks(range(N), map(lambda x: legende_dict[x],range(N)))#,rotation=90)
-    plt.legend(['Delayers', 'Scientists', 'Activists'])
-
+    #plt.legend([ 'Scientists', 'Activists', 'Delayers'])
+    plt.legend()
     #figure_title = 'topic_prevelance_by_type_' + timestr + '.jpg'
     save_figure(figure_title)
 
@@ -518,51 +516,54 @@ def generate_word_cloud(model_title, figure_title, topic):
     save_figure(figure_title)
     plt.show()
 
-def get_plots_stats():
+def get_plots_stats(cop26):
 
     timestr = time.strftime("%Y_%m_%d")
-    model_title = '/Users/shadenshabayek/Documents/Webclim/alt-platforms-telegram/top2vec/climate_topics_3_' + timestr + '.mod'
-    #
-    # play_with_top2vec(model_title = model_title)
-    #
-    # figure_title_topics = './top2vec/global_embedding_color_by_topic_3_'
-    # figure_title_users = './top2vec/global_embedding_color_by_user_3_'
-    #
-    # get_individual_topics(plot_topics = 1,
-    #                         model_title = model_title,
-    #                         figure_title_topics = figure_title_topics,
-    #                         figure_title_users = figure_title_users)
-    #
-    # model_scores_title = 'scores_models_3_' + timestr + '.csv'
-    # dendro_title = './top2vec/dendro_3_'+ timestr +'.pdf'
-    #
-    # get_hierarchy_of_topics(model_title = model_title,
-    #                         dendro_title = dendro_title,
-    #                         model_scores_title = model_scores_title)
-    #
-    # coord_title = 'dftop2vec_coordinates_3_' + timestr + '.csv'
-    # figure_title = 'topic_prevelance_by_type_3_' + timestr + '.jpg'
-    #
-    # plot_topic_prevelance_by_type(model_title = model_title,
-    #                             coord_title = coord_title,
-    #                             figure_title = figure_title)
+    model_title = '/Users/shadenshabayek/Documents/Webclim/Twitter_Climate/top2vec/climate_topics_cop26_' + timestr + '.mod'
+
+    play_with_top2vec(model_title = model_title)
+
+    figure_title_topics = './top2vec/global_embedding_color_by_topic_{}_'.format(cop26)
+    figure_title_users = './top2vec/global_embedding_color_by_user_{}_'.format(cop26)
+
+    get_individual_topics(plot_topics = 1,
+                            model_title = model_title,
+                            figure_title_topics = figure_title_topics,
+                            figure_title_users = figure_title_users,
+                            cop26 = cop26)
+
+    model_scores_title = 'scores_models_{}_'.format(cop26) + timestr + '.csv'
+    dendro_title = './top2vec/dendro_{}_'.format(cop26) + timestr +'.pdf'
+
+    get_hierarchy_of_topics(model_title = model_title,
+                            dendro_title = dendro_title,
+                            model_scores_title = model_scores_title,
+                            cop26 = cop26)
+
+    coord_title = 'dftop2vec_coordinates_{}_'.format(cop26) + timestr + '.csv'
+    figure_title = 'topic_prevelance_by_type_{}_'.format(cop26) + timestr + '.jpg'
+
+    plot_topic_prevelance_by_type(model_title = model_title,
+                                coord_title = coord_title,
+                                figure_title = figure_title)
 
     topic_0 = 0
-    figure_title_0 = 'wordcloud_topic_' + str(topic_0) + timestr + '.jpg'
+    figure_title_0 = 'wordcloud_topic_{}_'.format(cop26) + str(topic_0) + '_' + timestr + '.jpg'
     generate_word_cloud(model_title = model_title, figure_title = figure_title_0 , topic = topic_0)
 
     topic_1 = 1
-    figure_title_1 = 'wordcloud_topic_' + str(topic_1) + timestr + '.jpg'
+    figure_title_1 = 'wordcloud_topic_{}_'.format(cop26) + str(topic_1) + '_' + timestr + '.jpg'
     generate_word_cloud(model_title = model_title, figure_title = figure_title_1 , topic = topic_1)
 
     topic_2 = 2
-    figure_title_2 = 'wordcloud_topic_' + str(topic_2) + timestr + '.jpg'
+    figure_title_2 = 'wordcloud_topic_{}_'.format(cop26) + str(topic_2) + '_' + timestr + '.jpg'
     generate_word_cloud(model_title = model_title, figure_title = figure_title_2 , topic = topic_2)
 
 if __name__=="__main__":
 
   print('hello')
 
-  #get_doc_top2vec(all_time = 0, cop26 = 1)
-  #test_top2vec()
-  #get_plots_stats()
+  #get_doc_top2vec(cop26 = 0)
+  #get_doc_top2vec(cop26 = 1)
+  #run_top2vec()
+  get_plots_stats(cop26 = 1)

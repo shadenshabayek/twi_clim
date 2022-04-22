@@ -13,7 +13,6 @@ from time import sleep
 from utils import (get_user_metrics,
                     get_list_members,
                     import_data,
-                    import_google_sheet,
                     import_dict,
                     save_data,
                     save_dict)
@@ -23,13 +22,12 @@ import selenium
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 
-
 def get_stat(df, p, variable):
 
     median = df[variable].median()
     percentile = np.percentile(df[variable], p)
-    print('Median {}'.format(variable), median)
-    print('cutt-off', percentile, 'of followers count, the', p, 'percentile')
+    #print('Median {}'.format(variable), median)
+    #print('cutt-off', percentile, 'of followers count, the', p, 'percentile')
 
 def get_top_10k(df, variable):
 
@@ -163,9 +161,10 @@ def get_twitter_handles_desmog_openfeedback():
 
     return list_desmog, list_openfeedback
 
-def get_users_followers():
+def get_users_followers_delayers():
 
     load_dotenv()
+
     list_desmog, list_openfeedback = get_twitter_handles_desmog_openfeedback()
 
     get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
@@ -180,19 +179,24 @@ def get_users_followers():
 
 def get_list_delayers():
 
-    df = import_data ('followers_twitter_delayers_climate.csv')
+    #df = import_data ('followers_twitter_delayers_climate.csv')
+    df = pd.read_csv('./data/followers_twitter_delayers_climate.csv', dtype='str')
     df = df[~df['description'].isin(['did not find the account, deleted or suspended'])]
+    #f['id'] = df['id'].astype(str)
+    df['follower_count'] = df['follower_count'].astype('int64')
+    df['following_count'] = df['following_count'].astype('int64')
 
     """Tony heller is in Desmog but with the twitter account with one underscore, now the second one (two under scores) suspended"""
 
-    print('Desmog:', len(df[df['source'] == 'desmog_climate_database']))
-    print('open_feedback:', len(df[df['source'] == 'open_feedback']))
+    #print('Desmog:', len(df[df['source'] == 'desmog_climate_database']))
+    #print('open_feedback:', len(df[df['source'] == 'open_feedback']))
 
     get_stat(df, 62, 'follower_count')
     df = get_top_10k(df, 'follower_count')
+
     list = df['username'].tolist()
 
-    print('List Delayers:', len(list), 'users')
+    #print('List Delayers:', len(list), 'users')
     return list, df
 
 '''scientists'''
@@ -208,37 +212,27 @@ def collect_members_from_twitter_list():
 
     get_list_members(filename, list_id, bearer_token)
 
-def get_list_scientists_who_do_climate():
+def get_list_scientists():
 
     df = import_data('members_twitter_list_scientists_who_do_climate'  + '.csv')
-    print('total number of members:', len(df))
+    #print('total number of members:', len(df))
     df = df.replace(r'^\s*$', np.nan, regex=True)
+    df['id'] = df['id'].astype(str)
 
     df_protected = df[df['protected'] == True]
-    print(len(df_protected))
+    #print('protected accounts of scientists', len(df_protected))
 
     get_stat(df, 95.75, 'follower_count')
     df = get_top_10k(df, 'follower_count')
     df= df[~df['protected'].isin([True])]
     list = df['username'].tolist()
 
-    print('List Scientists:', len(list), 'users')
-
-    # #old list
-    #
-    # df_type = import_data('type_users_climate.csv')
-    # df_type['type'] = df_type['type'].astype(int)
-    #
-    # keep_type = [2]
-    # df_type = df_type[df_type['type'].isin(keep_type)]
-    #
-    # list_old = df_type['username'].tolist()
-    # list_diff = [x for x in list if x not in list_old]
-    # print(list_diff)
+    #print('List Scientists:', len(list), 'users')
 
     return list, df
 
 '''sctivists'''
+
 def filter_by_profile_description(df, list_keywords):
 
     df1 = df[df.user_profile_description.apply(lambda tweet: all(words in tweet for words in list_keywords))]
@@ -283,6 +277,7 @@ def get_list_activists():
 
     df = import_data('twitter_COP26.csv')
     df = df.dropna(subset = ['user_profile_description'])
+
     df['user_profile_description'] = df['user_profile_description'].str.lower()
     get_stat(df, 81, 'followers_count')
     df = get_top_10k(df, 'followers_count')
@@ -299,18 +294,52 @@ def get_list_activists():
     for user in list_remove:
         final_list.remove(user)
 
-    print('cliamte activists:', len(final_list))
+    #print('cliamte activists:', len(final_list))
+
     return final_list
+
+def get_users_followers_activists():
+
+    list = get_list_activists()
+    load_dotenv()
+    get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
+                    list = list,
+                    filename = os.path.join('.', 'data', 'followers_twitter_activists_climate'  + '.csv'),
+                    source = 'cop26_hashtag')
+
+def get_lists_and_followers():
+
+    list_scientists, df_s = get_list_scientists()
+    df_s['source'] = 'twitter_list_scientists_who_do_climate'
+    #print('Number of scientists', len(list_scientists))
+
+    list_delayers, df_d = get_list_delayers()
+    #print('Number of delayers', len(list_delayers))
+
+    list_activists = get_list_activists()
+    #print('Number of activists', len(list_activists))
+
+    #df_a = import_data('followers_twitter_activists_climate'  + '.csv')
+    df_a = pd.read_csv('./data/followers_twitter_activists_climate.csv', dtype='str')
+    df_a = df_a[~df_a['description'].isin(['did not find the account, deleted or suspended'])]
+    #df_a['id'] = df_a['id'].astype(str)
+    df_a['follower_count'] = df_a['follower_count'].astype('int64')
+    df_a['following_count'] = df_a['following_count'].astype('int64')
+
+    df_followers = pd.concat([df_s, df_d, df_a], axis=0, ignore_index=True)
+    #save_data(df_followers, 'climate_groups_followers.csv', 0)
+    print(df_followers.groupby(['source'], as_index = False).size())
+
+    return list_scientists, list_activists, list_delayers, df_followers
 
 def main():
 
     #get_twitter_handles_desmog_climate(collection_interupted = 0)
-    #collect_members_from_twitter_list()
     #get_twitter_handles_desmog_openfeedback()
-    #get_users_followers()
-    #get_list_delayers()
-    #get_list_scientists_who_do_climate()
-    get_list_activists()
+    #get_users_followers_delayers()
+    #collect_members_from_twitter_list()
+    #get_users_followers_activists()
+    get_lists_and_followers()
 
 if __name__ == '__main__':
 

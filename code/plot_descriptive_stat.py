@@ -8,13 +8,6 @@ import time
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
 
-# from create_twitter_users_lists import (get_list_desmog,
-#                                         get_list_scientists_who_do_climate,
-#                                         get_list_top_mentioned,
-#                                         get_list_top_mentioned_by_type,
-#                                         get_list_dropped_top_mentioned,
-#                                         get_list_open_feedback,
-#                                         get_list_activists)
 from matplotlib import pyplot as plt
 
 from utils import (import_data,
@@ -22,93 +15,34 @@ from utils import (import_data,
                     save_data,
                     save_figure
                     )
+from create_twitter_users_lists import get_lists_and_followers
 
-def keep_three_groups(df):
+def get_tweets_by_type():
 
-    df1 = import_data('type_users_climate.csv')
-    df1['type'] = df1['type'].astype(int)
-    df2 = df.merge(df1, how = 'inner', on = ['username'])
+    df  = import_data('twitter_data_climate_tweets_2022_03_15.csv')
+    df = df[~df['query'].isin(['f'])]
 
-    keep_type = [1, 2, 4]
-    df2 = df2[df2['type'].isin(keep_type)]
+    list_scientists, list_activists, list_delayers, df_followers = get_lists_and_followers()
 
-    print(df2.groupby(['type']).size())
+    df['type'] = ''
+    df['type'] = np.where(df['username'].isin(list_scientists), 'scientist', df['type'])
+    df['type'] = np.where(df['username'].isin(list_activists), 'activist', df['type'])
+    df['type'] = np.where(df['username'].isin(list_delayers), 'delayer', df['type'])
 
-    return df2
-
-def get_info_description_climate():
-
-    df1 = import_data('followers_twitter_list_scientists_who_do_science.csv')
-    df2 = import_data('followers_twitter_desmog_climate.csv')
-    df3 = import_data('followers_twitter_top_mentions_climate.csv')
-
-    df = pd.concat([df1, df2, df3], axis=0, ignore_index=True)
-    df = df[df['follower_count']>9999]
-
-    list_1 = get_list_desmog()
-    list_2 = get_list_scientists_who_do_climate()
-    list_3 = get_list_top_mentioned()
-
-    df['username'] = df['username'].str.lower()
-
-    df['type'] = 3
-
-    df['type'] = np.where(df['username'].isin(list_1), 1, df['type'])
-    df['type'] = np.where(df['username'].isin(list_2), 2, df['type'])
-
-    mylist = ['climate', 'warming']
-    pattern = '|'.join(mylist)
-
-    df = df.dropna(subset=['description'])
-    df_clim = df[df['description'].str.contains(pattern)]
-
-    print(df_clim[['username', 'follower_count', 'following_count', 'tweet_count', 'location', 'created_at','description', 'type']])
-    print(df_clim.info())
-    print(df_clim.groupby(['type']).size())
-    return df_clim
-
-def get_mentions_usernames_Twitter ():
-
-    df = add_type_list_climate(df = import_data('twitter_data_climate.csv'))
-
-    df = df.dropna(subset=['mentions_username'])
-
-    for index, row in df.iterrows():
-        df.at[index, 'mentions_username']=ast.literal_eval(row['mentions_username'])
-
-    df = df.explode('mentions_username')
-
-    df = df[['username', 'mentions_username', 'type_of_tweet', 'id', 'text', 'followers_count', 'type']]
-
-    df = df.dropna(subset=['mentions_username'])
-
-    df['mentions_username'] = df['mentions_username'].str.lower()
-    df['username'] = df['username'].str.lower()
+    print(df[~df['type'].isin(['scientist', 'activist','delayer'])]['username'].unique())
 
     return df
 
-def get_cited_domain_names_Twitter ():
+def get_cited_domain_names_Twitter () :
 
-    df = add_type_list_climate(df = import_data('twitter_data_climate.csv'))
-
-    df = update_truncated_retweets(df, 'climate_retweets_full_length_2022_01_24.csv')
-    #these users don't have tweets over the whole start and end period, I think they got suspended temp.
-    #nhc_atlantic shares no links
-    drop_users = ['kencuccinelli',
-                    'bigjoebastardi',
-                    'lozzafox',
-                    'americanthinker',
-                    'nhc_atlantic']
-
-    df = df[~df["username"].isin(drop_users)]
-    df = df.dropna(subset=['domain_name'])
+    df = get_tweets_by_type()
 
     df = df[['username', 'domain_name', 'expanded_urls', 'type_of_tweet', 'id', 'text', 'followers_count', 'type']]
 
     for index, row in df.iterrows():
         df.at[index, 'domain_name']=ast.literal_eval(row['domain_name'])
 
-    df=df.explode('domain_name')
+    df = df.explode('domain_name')
 
     a = ['twitter.com']
 
@@ -118,6 +52,7 @@ def get_cited_domain_names_Twitter ():
     df['username'] = df['username'].str.lower()
 
     print('There are', df['domain_name'].nunique(), 'unique cited domain names')
+    print(df.groupby(['type'], as_index = False).size())
 
     return df
 
@@ -139,8 +74,8 @@ def get_domains_categories ():
     df2['category'] = df2['category'].replace('','uncategorized')
     #print(df2.groupby(['type', 'category'])['category'].size())
 
-    remove = ['uncategorized']
-    df2 = df2[~df2['category'].isin(remove)]
+    #remove = ['uncategorized']
+    #df2 = df2[~df2['category'].isin(remove)]
 
     return df2
 
@@ -218,13 +153,11 @@ def get_percentage_categories():
 def get_domains_ratings (rating):
 
     df1 = import_google_sheet ('domain_names_rating')
-    #print('number of unique domain names', df1['domain_name'].nunique())
     df1 = df1.replace(r'^\s*$', np.nan, regex=True)
 
     df2 = get_cited_domain_names_Twitter ()
 
-    #rating = 'MBFC_factual'
-    df2[rating]=''
+    df2[rating] = ''
 
     df2.set_index('domain_name', inplace=True)
     df2.update(df1.set_index('domain_name'))
@@ -300,15 +233,15 @@ def get_percentage_rating (rating):
 
 def get_percentage_unique_links (rating):
 
-    #rating = 'MBFC_factual'
-
     df =  get_domains_ratings (rating)
+    df_all = get_tweets_by_type()
 
     df_percentage_unique_links = pd.DataFrame(columns=['username',
                                                 'type',
                                                 'nb_unique_urls',
                                                 'total_urls',
-                                                'share_unique_url'
+                                                'share_unique_url',
+                                                'share_links_tweets'
                                                 ])
 
     #print('total users with rated domains', len(df['username'].unique()))
@@ -317,10 +250,14 @@ def get_percentage_unique_links (rating):
 
         type = df[df['username'] == user ].type.unique()[0]
 
-        df_user = df[df['username'] == user ]
+        df_user_all_tweets = df_all  [df_all['username'] == user]
+
+        df_user = df[df['username'] == user]
 
         nb_unique_urls = df_user['domain_name'].nunique()
         total_urls = df_user['domain_name'].count()
+
+        share_links_tweets = round(100*(total_urls / len(df_user_all_tweets)), 2)
 
         share_unique_url = round((nb_unique_urls/total_urls)*100, 2)
 
@@ -329,16 +266,17 @@ def get_percentage_unique_links (rating):
                     'type': type,
                     'nb_unique_urls': nb_unique_urls,
                     'total_urls': total_urls,
-                    'share_unique_url': share_unique_url
+                    'share_unique_url': share_unique_url,
+                    'share_links_tweets': share_links_tweets
                 }, ignore_index=True)
 
-    #save_data(df_percentage_unique_links, 'climate_percentage_rating_agg.csv', 0)
+    save_data(df_percentage_unique_links, 'climate_percentage_rating_agg.csv', 0)
 
     return df_percentage_unique_links
 
 def get_percentage_general_stat ():
 
-    df = add_type_list_climate(df = import_data('twitter_data_climate.csv'))
+    df = get_tweets_by_type()
     df['type_of_tweet'] = df['type_of_tweet'].fillna('created_content')
     #print('total number of tweets', df['id'].nunique())
     #print('total number of users', df['username'].nunique())
@@ -347,12 +285,6 @@ def get_percentage_general_stat ():
     df2 = get_domains_ratings (rating = 'aggregated_rating')
 
     rating = 'aggregated_rating'
-
-    # list1 = df[df['type'] == 1]['username'].tolist()
-    # list2 = df[df['type'] == 2]['username'].tolist()
-    # list3 = df[df['type'] == 31]['username'].tolist()
-    # list4 = df[df['type'] == 32]['username'].tolist()
-    # list5 = df[df['type'] == 312]['username'].tolist()
 
     df_percentage_general = pd.DataFrame(columns=['username',
                                                 'type',
@@ -449,7 +381,7 @@ def get_percentage_general_stat ():
 
 def get_engagement_metrics():
 
-    df = add_type_list_climate(df = import_data('twitter_data_climate.csv'))
+    df = get_tweets_by_type()
     #df['type_of_tweet'] = df['type_of_tweet'].fillna('created_content')
     df['total_engagement'] = df['like_count'] + df['retweet_count'] + df['reply_count']
 
@@ -500,16 +432,6 @@ def get_engagement_metrics():
     timestr = time.strftime("%Y_%m_%d")
     title = 'engagement_general_stat_' + timestr + '.csv'
     save_data(df_engagement, title, 0)
-
-    print('max like:', df_engagement['mean_like_count'].max())
-    print('min like:', df_engagement['mean_like_count'].min())
-    print('max reply:', df_engagement['mean_reply_count'].max())
-    print('min reply:', df_engagement['mean_reply_count'].min())
-    print('max retweet:', df_engagement['mean_retweet_count'].max())
-    print('min retweet:', df_engagement['mean_retweet_count'].min())
-    print('max total eng:', df_engagement['mean_total_engagement'].max())
-    print('min total eng:', df_engagement['mean_total_engagement'].min())
-
 
     return df_engagement
 
@@ -900,32 +822,19 @@ def score_template(ax, median1, median2, m1, m2, m3, m4):
     plt.yticks([])
     ax.set_frame_on(False)
 
-#def percentage_rating_template(ax, median1, median2, m1, m2, m3, m4, median3, median4, m5, m6, m7, m8, median6, m9, m10, stat):
-#def percentage_rating_template(ax, median1, median2, m1, m2, m3, m4, median3, median4, m5, m6, m7, m8, stat):
-def percentage_rating_template(ax, median1, median2, m1, m2, m3, m4, median6, m9, m10, stat):
+def percentage_rating_template(ax, median1, median2, median3, m1, m2, m3, m4, m5, m6, stat):
 
     #plt.legend(loc='upper right')
     plt.legend()
-    #plt.axvline(x = 0, color='k', linestyle='--', linewidth=1)
-    #axvline(linewidth=4, color='r')
 
-    plt.vlines(x= median1 , ymin=m1, ymax=m2, color='red', linestyle='--', linewidth=1)
-    plt.text(median1+0.33, m2, "median", fontsize=7, color='red')
+    plt.vlines(x= median1 , ymin=m1, ymax=m2, color='darkgreen', linestyle='--', linewidth=1)
+    plt.text(median1+0.39, m2+0.015, "median", fontsize=7, color='green')
 
-    plt.vlines(x= median2 , ymin=m3, ymax=m4, color='green', linestyle='--', linewidth=1)
-    plt.text(median2+0.33, m4, "median", fontsize=7, color='green')
-    #plt.text(median2+0.3, 0.55, "median", fontsize=7, color='green')
+    plt.vlines(x= median2 , ymin=m3, ymax=m4, color='orange', linestyle='--', linewidth=1)
+    plt.text(median2+0.33, m4+0.015, "median", fontsize=7, color='orange')
 
-    # plt.vlines(x= median3 , ymin=m5-0.06, ymax=m6+0.045, color='lightcoral', linestyle='--', linewidth=1)
-    # plt.text(median3+0.3, 0, "median", fontsize=7, color='lightcoral')
-    # #plt.text(median2+0.3, 0.55, "median", fontsize=7, color='green')
-    #
-    # plt.vlines(x= median4 , ymin=m7-0.05, ymax=m8+0.05, color='palegreen', linestyle='--', linewidth=1)
-    # plt.text(median4+0.3, 0.2, "median", fontsize=7, color='palegreen')
-    #plt.text(median2+0.3, 0.55, "median", fontsize=7, color='green')
-
-    plt.vlines(x= median6 , ymin=m9, ymax=m10, color='orange', linestyle='--', linewidth=1)
-    plt.text(median6+0.33, m10, "median", fontsize=7, color='orange')
+    plt.vlines(x= median3 , ymin=m5, ymax=m6, color='red', linestyle='--', linewidth=1)
+    plt.text(median3+0.33, m6, "median", fontsize=7, color='red')
 
     if stat == 1 :
         plt.xticks([0, 25, 50, 75, 100],
@@ -934,11 +843,7 @@ def percentage_rating_template(ax, median1, median2, m1, m2, m3, m4, median6, m9
 
     elif stat == 2 :
 
-        #plt.xticks([0, 25, 50, 75, 100],
-                #['0%', '25%', '50%', '75%', ' 100%'])
-        #plt.xlim(0, 30000)
         plt.ticklabel_format(style = 'plain')
-
 
     plt.yticks([])
     ax.set_frame_on(False)
@@ -947,115 +852,70 @@ def percentage_rating_template(ax, median1, median2, m1, m2, m3, m4, median6, m9
 
 def plot_bubbles(df, rating, xlabel, title, stat):
 
-    #df = get_percentage_rating()
-    #df = import_data ('climate_percentage_rating.csv')
-
-    plt.figure(figsize=(5, 8))
-    #plt.figure(figsize=(7, 5))
-    #plt.figure(figsize=(7, 4))
-    #plt.figure(figsize=(6, 3))
+    plt.figure(figsize=(5, 5))
     ax = plt.subplot(111)
 
-
-
-    random_y2 = list(np.random.random(len(df[df['type']==2]))/2+0.4)
-    #random_y2 = list(np.random.random(len(df[df['type']==2]))/2+0.27)
-    #random_y2 = list(np.random.random(len(df[df['type']==2]))/2)
-    #print(np.random.random(len(df[df['type']==2])))
-
-    plt.plot(df[df['type']==2][rating].values,
-             random_y2,
-             'o', markerfacecolor='green', markeredgecolor='green', alpha=0.6,
-             #label='Scientists Who Do Climate')
+    random_y1 = list(np.random.random(len(df[df['type'] == 'scientist']))/4+0.3)
+    plt.plot(df[df['type']== 'scientist'][rating].values,
+             random_y1,
+             'o',
+             markerfacecolor='limegreen',
+             markeredgecolor='limegreen',
+             alpha=0.6,
              label='Scientists')
 
-
-    # random_y3 = list(np.random.random(len(df[df['type']==31]))/4-0.03)
-    # random_y4 = list(np.random.random(len(df[df['type']==32]))/4-0.03)
-    # random_y5 = list(np.random.random(len(df[df['type']==312]))/4-0.03)
-    #
-    # plt.plot(df[df['type']==31][rating].values,
-    #          random_y3,
-    #          '*', markerfacecolor='lightcoral', markeredgecolor='lightcoral', alpha=0.6,
-    #          label='Top mentioned by DCDD')
-    #
-    # plt.plot(df[df['type']==32][rating].values,
-    #          random_y4,
-    #          '*', markerfacecolor='palegreen', markeredgecolor='palegreen', alpha=0.6,
-    #          label='Top mentioned by SWDC')
-    #
-    # plt.plot(df[df['type']==312][rating].values,
-    #          random_y5,
-    #          '*', markerfacecolor='deepskyblue', markeredgecolor='deepskyblue', alpha=0.6,
-    #          label='Top mentioned common')
-
-    # random_y6 = list(np.random.random(len(df[df['type']==4]))/2+0.9)
-    #random_y6 = list(np.random.random(len(df[df['type']==4]))/5+0.79)
-    random_y6 = list(np.random.random(len(df[df['type']==4]))/2-0.15)
-
-    plt.plot(df[df['type']==4][rating].values,
-             random_y6,
-             '*', markerfacecolor='darkorange', markeredgecolor='orange', alpha=0.6,
-             #label='Climate activists')
+    random_y2 = list(np.random.random(len(df[df['type']== 'activist']))/4)
+    plt.plot(df[df['type']== 'activist' ][rating].values,
+             random_y2,
+             '*',
+             markerfacecolor='darkorange',
+             markeredgecolor='orange',
+             alpha=0.6,
              label='Activists')
 
-    #random_y1 = list(np.random.random(len(df[df['type']==1]))/4-0.32)
-    random_y1 = list(np.random.random(len(df[df['type']==1]))/4-0.42)
-    plt.plot(df[df['type']==1][rating].values,
-             random_y1,
-             'o', markerfacecolor='red', markeredgecolor='red', alpha=0.6,
-             #label='Desmog Climate Disinfo')
+    random_y3 = list(np.random.random(len(df[df['type'] == 'delayer']))/4-0.3)
+    plt.plot(df[df['type'] == 'delayer' ][rating].values,
+             random_y3,
+             'o',
+             markerfacecolor='red',
+             markeredgecolor='red',
+             alpha=0.6,
              label='Delayers')
 
-    median1 = np.median(df[df['type']== 1][rating])
-    median2 = np.median(df[df['type']== 2][rating])
+    median1 = np.median(df[df['type'] == 'scientist'][rating])
+    median2 = np.median(df[df['type'] == 'activist'][rating])
+    median3 = np.median(df[df['type'] == 'delayer'][rating])
 
-    # median3 = np.median(df[df['type']== 31][rating])
-    # median4 = np.median(df[df['type']== 32][rating])
-
-    median6 = np.median(df[df['type']== 4][rating])
 
     if stat == 1:
         percentage_rating_template(ax,
                                 median1,
                                 median2,
+                                median3,
                                 min(random_y1),
                                 max(random_y1),
                                 min(random_y2),
                                 max(random_y2),
-                                # median3,
-                                # median4,
-                                # min(random_y3),
-                                # max(random_y3),
-                                # min(random_y4),
-                                # max(random_y4),
-                                median6,
-                                min(random_y6),
-                                max(random_y6),
+                                min(random_y3),
+                                max(random_y3),
                                 stat)
     elif stat == 2 :
 
         percentage_rating_template(ax,
                                 median1,
                                 median2,
+                                median3,
                                 min(random_y1),
                                 max(random_y1),
                                 min(random_y2),
                                 max(random_y2),
-                                median3,
-                                median4,
                                 min(random_y3),
                                 max(random_y3),
-                                min(random_y4),
-                                max(random_y4),
-                                median6,
-                                min(random_y6),
-                                max(random_y6),
                                 stat)
     else:
         score_template(ax, median1, median2, min(random_y1), max(random_y1), min(random_y2), max(random_y2))
 
-    plt.ylim(-.45, 1)
+    plt.ylim(-0.4, 1)
     plt.xlabel(xlabel, size='large')
 
     plt.tight_layout()
@@ -1067,23 +927,23 @@ def plot_share_ratings():
     #timestr = '2021_11_29' MBFC_reportingquality_scraped
 
     #plot_bubbles(df = get_percentage_rating(rating = 'aggregated_rating'),
-    plot_bubbles(df = get_percentage_rating(rating = 'third_aggregation'),
-                 #df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
+    plot_bubbles(#df = get_percentage_rating(rating = 'third_aggregation'),
+                 df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
                  rating = 'percentage_negative',
-                 xlabel = "Share of domains with low and very-low ratings " + timestr,
+                 xlabel = "Share of domains rated\n low and very-low ",
                  title = 'negative_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
 
     plot_bubbles(#df = get_percentage_rating(rating = 'aggregated_rating'),
                  df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
                  rating = 'percentage_positive',
-                 xlabel = "Share of domains mostly-factual, high, very-high ratings " + timestr,
+                 xlabel = "Share of domains rated \nmostly-factual, high, very-high ",
                  title = 'positive_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
 
     plot_bubbles(df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
                  rating = 'percentage_mixed',
-                 xlabel = "Share of domains with mixed rating " + timestr,
+                 xlabel = "Share of domains rated as\n mixed ",
                  title = 'mix_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
 
@@ -1120,7 +980,7 @@ def plot_share_categories():
                  df = get_percentage_categories(),
                  rating = 'monetization_tools',
                  xlabel = "share of links of monetization tools",
-                 title = 'money_climate.jpg',
+                 title = 'money_climate_' + timestr + '.jpg',
                  stat = 1 )
 
     timestr = time.strftime("%Y_%m_%d")
@@ -1129,7 +989,7 @@ def plot_share_categories():
     plot_bubbles(df = import_data (title),
                  rating = 'academic',
                  xlabel = "share of academic links",
-                 title = 'academic_climate' + timestr + '.jpg',
+                 title = 'academic_climate_' + timestr + '.jpg',
                  stat = 1 )
 
     plot_bubbles(df = import_data (title),
@@ -1214,26 +1074,26 @@ def plot_engagement_metric():
                  #df = import_data ('engagement_general_stat_' + timestr + '.csv'),
                  rating = 'mean_like_count',
                  xlabel = "Mean like count of Tweets of each user " + timestr,
-                 title = 'mean_like_climate_' + timestr +'.jpg',
+                 title = './stats/mean_like_climate_' + timestr +'.jpg',
                  stat = 2 )
 
     plot_bubbles(#df = get_engagement_metrics(),
                  df = import_data ('engagement_general_stat_' + timestr + '.csv'),
                  rating = 'mean_reply_count',
                  xlabel = "Mean reply count of Tweets of each user " + timestr,
-                 title = 'mean_reply_climate_' + timestr +'.jpg',
+                 title = './stats/mean_reply_climate_' + timestr +'.jpg',
                  stat = 2 )
 
     plot_bubbles(df = import_data ('engagement_general_stat_' + timestr + '.csv'),
                  rating = 'mean_retweet_count',
                  xlabel = "Mean retweet count of Tweets of each user " + timestr,
-                 title = 'mean_retweet_climate_' + timestr +'.jpg',
+                 title = './stats/mean_retweet_climate_' + timestr +'.jpg',
                  stat = 2 )
 
     plot_bubbles(df = import_data ('engagement_general_stat_' + timestr + '.csv'),
                  rating = 'followers_count',
                  xlabel = "Followers count on Twitter of each user " + timestr,
-                 title = 'followers_count_climate_' + timestr +'.jpg',
+                 title = './stats/followers_count_climate_' + timestr +'.jpg',
                  stat = 2 )
 
 def plot_score ():
@@ -1261,8 +1121,8 @@ def plot_score ():
 def plot_all():
 
     #plot_share_categories()
-    plot_share_ratings()
-    #plot_engagement_metric()
+    #plot_share_ratings()
+    plot_engagement_metric()
     #plot_share_general ()
     #plot_score()
 
@@ -1281,17 +1141,6 @@ def import_google_sheet (filename):
     return records_df
 
 if __name__ == '__main__':
-    #score(rating = 'aggregated_rating')
-    #plot_all()
-    #plot_terenary_graph()
-    df = import_google_sheet ('domain_names_rating')
-    print(len(df))
-    #add_type_list_climate(df = import_data('twitter_data_climate.csv'))
-    #get_top_mentions_by_type ()
-    #get_top_mentions_of_top_mentions_by_type ()
-    #get_enagement_metrics()
-    #get_top_mentions_by_type ()
-    #get_top_mentions ()
-    #get_info_description_climate()
-    #add_type_list_climate(df = import_data('twitter_data_climate.csv'))
-    #df = add_type_list_climate(df = import_data('twitter_data_climate.csv'))
+
+    #get_cited_domain_names_Twitter ()
+    plot_all()
