@@ -78,6 +78,9 @@ def get_tweets_by_type():
 def create_gexf(var1, var2, type_tweet):
 
     df = get_tweets_by_type()
+    #they have no ratings, so for score, absorbing share_alternative_paltforms
+    list_drop = ['sumakhelena', 'yann_a_b', 'israhirsi', 'johnredwood', 'weatherdotus']
+    df = df[~df[var1].isin(list_drop)]
     df = df[df[var1].notna()]
     df = df[df['username'] != df[var1]]
     df1 = df[['username', 'type', var1, var2]]
@@ -90,69 +93,66 @@ def create_gexf(var1, var2, type_tweet):
         G.nodes[row[var1]]['type'] = row[var2]
         G.nodes[row['username']]['type'] = row['type']
 
-    nx.write_gexf(G, "./data/{}_network_climate.gexf".format(type_tweet))
+    #nx.write_gexf(G, "./data/{}_network_climate.gexf".format(type_tweet))
 
-    #print('number of edges', G.number_of_edges())
-    #print('number of nodes', G.number_of_nodes())
-    #print(G.nodes)
-    #list_nodes = G.nodes
-    #A = nx.adjacency_matrix(G)
-    #B = nx.to_numpy_array(G)
-    #print(B.shape)
-    #print(len(list_nodes))
+    list_nodes = G.nodes
+    A = nx.adjacency_matrix(G)
+    B = nx.to_numpy_array(G)
 
-    #save_list(list_nodes, 'list_nodes_climate_retweets.txt')
-    #save_numpy_array(B, 'matrix_mentions_retweets.npy')
+    save_list(list_nodes, 'list_nodes_climate_{}.txt'.format(type_tweet))
+    save_numpy_array(B, 'matrix_climate_{}.npy'.format(type_tweet))
 
-    #return A, B, list_nodes
+    return A, B, list_nodes
 
 def assign_color_by_type(type_user):
 
-    if type_user == 1 :
-        color='red'
-    elif type_user == 2 :
-        color='green'
-    elif type_user == 31 :
-        color='lightcoral'
-    elif type_user == 32 :
-        color='lightgreen'
-    elif type_user == 312 :
-        color='deepskyblue'
-    elif type_user == 4 :
-        color='darkorange'
+    if type_user == 'scientist' :
+        color = 'green'
+    elif type_user == 'activist' :
+        color = 'darkorange'
+    elif type_user == 'delayer' :
+        color = 'red'
 
     return color
 
-def update_score():
+def update_score(type_tweet):
 
-    df_initial_score = import_data('climate_score_postives_count.csv')
-    df_initial_score = df_initial_score.rename(columns = {'Twitter_handle': 'username'})
-    df_initial_score = df_initial_score.drop(['own_website',
-                                                'other_link_count_with_rating',
-                                                'own_link_count_with_rating'], axis = 1)
+    #timestr = time.strftime("%Y_%m_%d")
+    timestr = '2022_04_25'
+    title = 'climate_percentage_rating_agg_' + timestr + '.csv'
 
+    df_initial_score = import_data(title)
 
-    #A, B, list_nodes = create_mentions_gexf()
-
-    list_nodes = read_list('list_nodes_climate_retweets.txt')
-    B = read_numpy_array('matrix_mentions_retweets.npy')
+    list_nodes = read_list('list_nodes_climate_{}.txt'.format(type_tweet))
+    print(list_nodes)
+    B = read_numpy_array('matrix_climate_{}.npy'.format(type_tweet))
 
     df_users_scores = pd.DataFrame(list_nodes, columns=['username'])
-
     df = df_users_scores.merge(df_initial_score, how = 'inner', on = ['username'])
-    df['type'] = df['type'].astype('int')
-
+    # print(df_initial_score.nunique())
+    # print(df_users_scores.nunique())
+    # print(df.nunique())
+    #
+    # list1 = df_users_scores['username'].tolist()
+    # list2 = df['username'].tolist()
+    # list_diff = [x for x in list1 if x not in list2]
+    # print(list_diff)
     print('number of nodes', len(list_nodes))
 
-    score = df['final_score_twitter'].to_numpy()
+    #score = df['share_negative_weighted_engagement'].to_numpy()
+    score = df['share_negative'].to_numpy()
 
     print(score.shape)
     print(B.shape)
 
+    #B[np.diag_indices_from(B)] /= 1
+    np.fill_diagonal(B, 1, wrap=False)
     B_w = B/B.sum(axis=1, keepdims=True)
 
+    print((B_w))
+
     n = len(df['username'].tolist())
-    N = 100
+    N = 300
     matrix = np.zeros((n,N))
     matrix[:,0] = score
     #print(matrix)
@@ -180,15 +180,18 @@ def update_score():
                      marker = 'o',
                      color = color,
                      linestyle='solid',
-                     linewidth = 3
+                     linewidth = 1
                      )
-
-    plt.ylim(-3.5, 3.5)
+    print(matrix[:,N-1])
+    df['final_score'] = matrix[:,N-1]
+    plt.ylim(-3.5, 100)
     plt.xlim(-0.1,N)
     #plt.xlabel(xlabel, size='large')
 
     plt.tight_layout()
-    save_figure('score_updating_based_on_retweets.jpg')
+    #save_figure('score_updating_based_on_{}_test_share_neg.jpg'.format(type_tweet))
+    #save_data(df, 'final_score_unweighted_eng.csv', 0)
+    return df
 
 def create_networks():
 
@@ -204,8 +207,18 @@ def create_networks():
                 var2 = 'type_in_reply',
                 type_tweet = 'reply')
 
+def plot_score_update():
+
+    # create_gexf(var1 = 'retweeted_username_within_list',
+    #             var2 = 'type_retweeted',
+    #             type_tweet = 'retweeted')
+
+    update_score(type_tweet = 'retweeted')
+
+
 if __name__ == '__main__':
 
     #create_mentions_gexf()
     #update_score()
-    create_networks()
+    #create_networks()
+    plot_score_update()

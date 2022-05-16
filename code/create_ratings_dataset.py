@@ -1,6 +1,7 @@
 import ast
 import pandas as pd
 import numpy as np
+import time
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -12,6 +13,7 @@ from utils import (import_data,
                     push_to_google_sheet,
                     save_data,
                     save_figure)
+
 from create_twitter_users_lists import get_lists_and_followers
 
 
@@ -112,9 +114,16 @@ def get_domains_categories (type):
     print('number of unrated links with repetition', len(df_unrated))
     summary_categories_unrated = df_unrated.groupby(['category'], as_index = False).size().sort_values(by = 'size', ascending = False)
     print(summary_categories_unrated)
+    unrated_uncategorized = len(df_unrated[df_unrated['category'] == 'uncategorized'])
+    unrated_categorized = len(df_unrated) - unrated_uncategorized
     print( 'share of uncategorized and unrated', len(df_unrated[df_unrated['category'] == 'uncategorized'])/total_number_of_links)
     print('unique links', df_unrated[df_unrated['category'] == 'uncategorized']['domain_name'].nunique() )
-    #print(df_unrated[df_unrated['category'] == 'uncategorized'].groupby(['domain_name'], as_index = False).size().sort_values(by = 'size', ascending = False).head(50))
+    print(df_unrated[df_unrated['category'] == 'uncategorized'].groupby(['domain_name'], as_index = False).size().sort_values(by = 'size', ascending = False).head(50))
+
+    summary_ratings = summary_ratings[~summary_ratings['third_aggregation'].isin(['unrated'])]
+    summary_ratings = summary_ratings.append({'third_aggregation': 'url_category_with_no_rating' , 'size': unrated_categorized}, ignore_index=True)
+    summary_ratings = summary_ratings.append({'third_aggregation': 'no_category_no_rating' , 'size': unrated_uncategorized}, ignore_index=True)
+    summary_ratings = summary_ratings.sort_values(by = 'size', ascending = False)
 
     return df_unrated, summary_categories_unrated, summary_ratings
 
@@ -133,12 +142,13 @@ def create_donut(x, y, df, figure_name, title, type_title, colormap):
     ratings = list_labels
     data = df[y].to_list()
 
-    #cmap = plt.get_cmap('cool')
-    #cmap = plt.get_cmap('Greens')
-    cmap = plt.get_cmap(colormap)
-    colors = [cmap(i) for i in np.linspace(0, 1, 7)]
 
-    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.4), startangle=230, colors = colors)
+
+    cmap = plt.get_cmap(colormap)
+    colors = [cmap(i) for i in np.linspace(0, 1, 10)]
+    #colors = ['green', 'whitesmoke', 'limegreen', 'whitesmoke', 'orange', 'darkgreen', 'red', 'salmon', 'whitesmoke']
+
+    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.4), startangle=340, colors = colors)
 
     bbox_props = dict(boxstyle="square,pad=0.2", fc="w", ec="k", lw=0.72)
 
@@ -163,51 +173,55 @@ def create_donut(x, y, df, figure_name, title, type_title, colormap):
 def create_donut_by_group(type, type_title, colormap, type_df):
 
     df_unrated, summary_categories_unrated, summary_ratings = get_domains_categories (type = type)
+    timestr = time.strftime("%Y_%m_%d")
 
     if type_df == 'rating':
+
         create_donut(x = 'third_aggregation',
                           y = 'size',
                           df = summary_ratings,
-                          figure_name = 'summary_ratings_climate_{}'.format(type),
+                          figure_name = 'summary_ratings_climate_{}_'.format(type) + timestr,
                           title = '',
                           type_title = type_title,
                           colormap = colormap)
 
     elif type_df == 'category':
+
         create_donut(x = 'category',
                           y = 'size',
                           df = summary_categories_unrated,
-                          figure_name = 'summary_categories_climate_{}'.format(type),
+                          figure_name = 'summary_categories_climate_{}_'.format(type) + timestr,
                           title = '',
                           type_title = type_title,
                           colormap = colormap)
 
-def create_figures():
+def create_figures(type_df):
 
-    create_donut_by_group(type = 'scientist',
-                            type_title = 'Scientists',
-                            colormap = 'Greens',
-                            type_df = 'category')
-
-    create_donut_by_group(type = 'activist',
-                            type_title = 'Activists',
-                            colormap = 'Oranges',
-                            type_df = 'category')
-
-    create_donut_by_group(type = 'delayer',
-                            type_title = 'Delayers',
-                            colormap = 'Reds',
-                            type_df = 'category')
+    # create_donut_by_group(type = 'scientist',
+    #                         type_title = 'Scientists',
+    #                         colormap = 'Greens',
+    #                         type_df = type_df)
+    #
+    # create_donut_by_group(type = 'activist',
+    #                         type_title = 'Activists',
+    #                         colormap = 'Oranges',
+    #                         type_df = type_df)
+    #
+    # create_donut_by_group(type = 'delayer',
+    #                         type_title = 'Delayers',
+    #                         colormap = 'Reds',
+    #                         type_df = type_df)
 
     create_donut_by_group(type = 'all',
                             type_title = 'All groups',
                             colormap = 'cool',
-                            type_df = 'category')
+                            #colormap = ['green', 'lightgray', 'limegreen', 'limegreen', 'lightgray', 'bisque', 'darkgreen', 'red', 'salmon', 'lightgray'],
+                            type_df = type_df)
 
 if __name__ == '__main__':
 
-    #create_figures()
-    get_domains_ratings (type = 'all')
-    get_domains_ratings (type = 'scientist')
-    get_domains_ratings (type = 'activist')
-    get_domains_ratings (type = 'delayer')
+    create_figures(type_df = 'rating')
+    #get_domains_ratings (type = 'all')
+    #get_domains_ratings (type = 'scientist')
+    #get_domains_ratings (type = 'activist')
+    #get_domains_ratings (type = 'delayer')

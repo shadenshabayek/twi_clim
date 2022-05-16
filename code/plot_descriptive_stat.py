@@ -37,11 +37,13 @@ def get_cited_domain_names_Twitter () :
 
     df = get_tweets_by_type()
 
-    df = df[['username', 'domain_name', 'expanded_urls', 'type_of_tweet', 'id', 'text', 'followers_count', 'type']]
-
+    df['positive_engagement'] = df['retweet_count'] + df['like_count']
+    print(len(df))
+    df = df[['username', 'domain_name', 'expanded_urls', 'type_of_tweet', 'id', 'text', 'followers_count', 'type', 'positive_engagement']]
+    df = df[~df['type_of_tweet'].isin(['replied_to'])]
     for index, row in df.iterrows():
         df.at[index, 'domain_name']=ast.literal_eval(row['domain_name'])
-
+    print('after removing replies', len(df))
     df = df.explode('domain_name')
 
     a = ['twitter.com']
@@ -171,15 +173,23 @@ def get_percentage_rating (rating):
 
     #rating = 'MBFC_factual'
     df =  get_domains_ratings (rating)
+
     df_percentage_rating = pd.DataFrame(columns=['username',
                                                 'type',
                                                 'rating_negative',
                                                 'rating_positive',
                                                 'rating_mixed',
                                                 'total_with_rating',
-                                                'percentage_negative',
-                                                'percentage_positive',
-                                                'percentage_mixed'])
+                                                'retweets_negative_rating',
+                                                'retweets',
+                                                'share_negative',
+                                                'share_positive',
+                                                'share_mixed',
+                                                'positive_engagement_rating_negative',
+                                                'positive_engagement_rating_positive',
+                                                'positive_engagement_rating_mixed',
+                                                'positive_engagement_all_links',
+                                                'share_negative_weighted_engagement'])
 
     remove = ['unrated', '(satire)']
     df = df[~df[rating].isin(remove)]
@@ -197,14 +207,42 @@ def get_percentage_rating (rating):
         df_user = df[df['username'] == user ]
 
         total_with_rating = df_user[rating].count()
+        retweets = df_user[df_user['type_of_tweet'].isin(['retweeted'])][rating].count()
 
         rating_positive = df_user[df_user[rating].isin(positive)][rating].count()
+
+        if rating_positive > 0 :
+            positive_engagement_rating_positive = df_user[df_user[rating].isin(positive)]['positive_engagement'].mean()
+            positive_engagement_rating_positive = round(positive_engagement_rating_positive)
+        else :
+            positive_engagement_rating_positive = 0
+
         rating_negative = df_user[df_user[rating].isin(negative)][rating].count()
+        rn = df_user[df_user[rating].isin(negative)]
+        # if user == 'drmarianeira':
+        #     print(rn['id'])
+        retweets_negative_rating = rn[rn['type_of_tweet'].isin(['retweeted'])][rating].count()
+
+        if rating_negative > 0 :
+            positive_engagement_rating_negative = df_user[df_user[rating].isin(negative)]['positive_engagement'].mean()
+            positive_engagement_rating_negative = round(positive_engagement_rating_negative)
+        else:
+            positive_engagement_rating_negative = 0
+
         rating_mixed = df_user[df_user[rating].isin(mixed)][rating].count()
+
+        if rating_mixed > 0:
+            positive_engagement_rating_mixed = df_user[df_user[rating].isin(mixed)]['positive_engagement'].mean()
+            positive_engagement_rating_mixed = round(positive_engagement_rating_mixed)
+        else:
+            positive_engagement_rating_mixed = 0
+
+        positive_engagement_all_links = positive_engagement_rating_positive + positive_engagement_rating_negative + positive_engagement_rating_mixed
 
         if total_with_rating > 0:
 
             per_neg = round((rating_negative / total_with_rating)*100, 2)
+            share_negative_weighted_engagement = round((positive_engagement_rating_negative)/(positive_engagement_all_links)*100,2)
             per_pos = round((rating_positive / total_with_rating)*100, 2)
             per_mix = round((rating_mixed / total_with_rating)*100, 2)
 
@@ -212,6 +250,7 @@ def get_percentage_rating (rating):
             per_neg = 0
             per_pos = 0
             per_mix = 0
+            share_negative_weighted_engagement = 0
 
         df_percentage_rating = df_percentage_rating.append({
                     'username': user,
@@ -220,9 +259,16 @@ def get_percentage_rating (rating):
                     'rating_positive': rating_positive,
                     'rating_mixed': rating_mixed,
                     'total_with_rating': total_with_rating,
-                    'percentage_negative': per_neg,
-                    'percentage_positive': per_pos,
-                    'percentage_mixed': per_mix}, ignore_index=True)
+                    'retweets_negative_rating': retweets_negative_rating,
+                    'retweets': retweets,
+                    'share_negative': per_neg,
+                    'share_positive': per_pos,
+                    'share_mixed': per_mix,
+                    'positive_engagement_rating_negative': positive_engagement_rating_negative,
+                    'positive_engagement_rating_positive': positive_engagement_rating_positive,
+                    'positive_engagement_rating_mixed': positive_engagement_rating_mixed,
+                    'positive_engagement_all_links': positive_engagement_all_links,
+                    'share_negative_weighted_engagement':share_negative_weighted_engagement}, ignore_index=True)
 
     timestr = time.strftime("%Y_%m_%d")
     title = 'climate_percentage_rating_agg_' + timestr + '.csv'
@@ -435,344 +481,31 @@ def get_engagement_metrics():
 
     return df_engagement
 
-def get_top_mentions ():
+def get_top_retweeted (type):
 
-    df = get_mentions_usernames_Twitter ()
+    df = get_tweets_by_type()
+    type =[type]
+    df = df[df['type'].isin(type)]
 
-    types =[1, 2]
-    df = df[df['type'].isin(types)]
+    df_top = df.groupby(['retweeted_username'], as_index = False).size().sort_values(by='size', ascending=False).head(30)
+    print(df_top)
 
-    df_top = df.groupby(['mentions_username'], as_index = False).size().sort_values(by='size', ascending=False).head(200)
-
-    list1 = df[df['type'] == 1]['username'].tolist()
-    list2 = df[df['type'] == 2]['username'].tolist()
-
-    top1 = df_top[df_top['mentions_username'].isin(list1)]['mentions_username'].count()
-    top2 = df_top[df_top['mentions_username'].isin(list2)]['mentions_username'].count()
-
-    print(df_top.head(60))
-    print('mentions in group 1', top1)
-    print('mentions in group 2', top2)
-
-    df_top = df_top.rename(columns={'mentions_username': 'username'})
-
-    df_match = import_data('climate_percentage_rating_agg.csv')
-    df_match = df_match[['username', 'type']]
-
-    df_merge = df_top.merge(df_match, how = 'outer', on = ['username'])
-
-    save_data(df_merge, 'climate_top_mentions.csv', 0)
-
-    return df_merge
-
-def get_top_mentions_by_type ():
-
-    df = get_mentions_usernames_Twitter ()
-
-    types =[1, 2]
-    df = df[df['type'].isin(types)]
-
-    df1 = df[df['type'] == 1]
-    df2 = df[df['type'] == 2]
-
-    df_top1 = df1.groupby(['mentions_username'], as_index = False).size().sort_values(by='size', ascending=False).head(300)
-    df_top2 = df2.groupby(['mentions_username'], as_index = False).size().sort_values(by='size', ascending=False).head(300)
-
-    df_top1['top_mentionned_by_list'] = 31
-    df_top2['top_mentionned_by_list'] = 32
-
-    df_top = pd.concat([df_top1, df_top2], axis=0, ignore_index=True)
-
-    list_1 = get_list_desmog()
-    list_2 = get_list_scientists_who_do_climate()
-    list_3 = get_list_top_mentioned()
-
-    df_top['type'] = 4
-
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_1), 1, df_top['type'])
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_2), 2, df_top['type'])
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_3), 3, df_top['type'])
-
-    df_top = df_top.rename(columns={'mentions_username': 'username'})
-
-    other_lists = list_1 + list_2
-    list = df_top['username'].tolist()
-    print('nb of top mentions BEFORE removing existing users:', len(list))
-
-    list = [x for x in list if x not in other_lists]
-    print('nb of top mentions AFTER removing existing users:', len(list))
-
-    list_drop = get_list_dropped_top_mentioned()
-
-    repetitions = df.groupby(['mentions_username'], as_index=False).size().sort_values(by='size', ascending=False)
-    repetitions = repetitions.rename(columns = {'size' : 'total_nb_mentions'})
-    repetitions = repetitions[repetitions['total_nb_mentions']>10]
-    user = repetitions['mentions_username'].tolist()
-
-    #share = 100*(df_top[df_top['username'].isin(list)]['size'].sum()/ df_top['size'].sum())
-    share = 100*(df_top[df_top['username'].isin(other_lists + list_drop)]['size'].sum()/ df[df['mentions_username'].isin(user)]['mentions_username'].count())
-    print('share of existing users in mentions (including dropped politicians):', share)
-
-    #list_drop = get_list_dropped_top_mentioned()
-
-    #share_2 = 100*(df_top[df_top['username'].isin(list + list_drop)]['size'].sum()/ df_top['size'].sum())
-    #print('share of existing users in mentions + dropped politicians (e.g. POTUS):', share_2)
-
-
-
-    # df_match = import_data('followers_twitter_top_mentions_climate.csv')
-    # df_match['username'] = df_match['username'].str.lower()
-    # df_match = df_match[['username', 'follower_count']]
-    #
-    # df_merge = df_top.merge(df_match, how = 'outer', on = ['username'])
-    # df_merge = df_merge[df_merge['follower_count']>9999]
-    #
-    # print(df_merge.head(100))
-    #
-    # save_data(df_merge, 'climate_top_mentions_by_type.csv', 0)
-    #
-    #
-    #
-    # return df_merge
-
-def get_top_mentions_of_top_mentions_by_type ():
-
-    df = get_mentions_usernames_Twitter ()
-
-    types =[31, 32, 312]
-    df = df[df['type'].isin(types)]
-
-    df1 = df[df['type'] == 31]
-    df2 = df[df['type'] == 32]
-    df3 = df[df['type'] == 312]
-
-    df_top1 = df1.groupby(['mentions_username'], as_index = False).size().sort_values(by='size', ascending=False).head(300)
-    df_top2 = df2.groupby(['mentions_username'], as_index = False).size().sort_values(by='size', ascending=False).head(300)
-    df_top3 = df3.groupby(['mentions_username'], as_index = False).size().sort_values(by='size', ascending=False).head(300)
-
-    df_top1['top_mentionned_by_list'] = 431
-    df_top2['top_mentionned_by_list'] = 432
-    df_top3['top_mentionned_by_list'] = 4312
-
-    #print(df_top1.info())
-    #print(df_top2.info())
-    #print(df_top3.info())
-    df_top = pd.concat([df_top1, df_top2, df_top3], axis=0, ignore_index=True)
-
-    list_1 = get_list_desmog()
-    list_2 = get_list_scientists_who_do_climate()
-    list_31, list_32, list_312 = get_list_top_mentioned_by_type()
-
-    df_top['type'] = 4
-
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_1), 1, df_top['type'])
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_2), 2, df_top['type'])
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_31), 31, df_top['type'])
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_32), 32, df_top['type'])
-    df_top['type'] = np.where(df_top['mentions_username'].isin(list_312), 312, df_top['type'])
-
-    #print(df_top.info())
-    #print(df_top.head())
-    #print(df_top.tail())
-
-    #list1 = df[df['type'] == 1]['username'].tolist()
-    #list2 = df[df['type'] == 2]['username'].tolist()
-
-
-    # top1 = df_top[df_top['mentions_username'].isin(list1)]['mentions_username'].count()
-    # top2 = df_top[df_top['mentions_username'].isin(list2)]['mentions_username'].count()
-    #
-    # print(df_top.head(60))
-    # print('mentions in group 1', top1)
-    # print('mentions in group 2', top2)
-
-    df_top = df_top.rename(columns={'mentions_username': 'username'})
-    #
-    #df_match = import_data('followers_twitter_top_mentions_climate.csv')
-    #df_match['username'] = df_match['username'].str.lower()
-    #df_match = df_match[['username', 'follower_count']]
-
-    #df_merge = df_top.merge(df_match, how = 'outer', on = ['username'])
-    #df_merge = df_merge[df_merge['follower_count']>9999]
-
-    #print(df_merge.head(100))
-    print(df_top.head(70))
-
-    list_1 = get_list_scientists_who_do_climate()
-    list_2 = get_list_desmog()
-    list_31, list_32, list_312 = get_list_top_mentioned_by_type()
-
-    other_lists = list_1 + list_2 + list_31 + list_32 + list_312
-    list = df_top['username'].tolist()
-    print('nb of top mentions by top mentions BEFORE removing existing users:', len(list))
-
-    list = [x for x in list if x not in other_lists]
-    print('nb of top mentions by top mentions AFTER removing existing users:', len(list))
-
-    list_drop = get_list_dropped_top_mentioned()
-    #share = 100*(df_top[df_top['username'].isin(list)]['size'].sum()/ df_top['size'].sum())
-    share = 100*(df_top[df_top['username'].isin(other_lists + list_drop)]['size'].sum()/ df['mentions_username'].count())
-    print('share of existing users in mentions (including dropped politicians):', share)
-
-
-    #
-    # share_2 = 100*(df_top[df_top['username'].isin(list + list_drop)]['size'].sum()/ df_top['size'].sum())
-    # print('share of existing users in mentions + dropped politicians (e.g. POTUS):', share_2)
-
-
-
-    #save_data(df_top, 'climate_top_mentions_of_top_mentions_by_type.csv', 0)
-
-    return df_top
-
-def get_mentions_stat ():
-
-    df = get_mentions_usernames_Twitter ()
-
-    list1 = df[df['type'] == 1]['username'].tolist()
-    list2 = df[df['type'] == 2]['username'].tolist()
-
-    df_mentions = pd.DataFrame(columns=['group',
-                                        'total_mentions',
-                                        'total_unique_mentions',
-                                        'unique_mentions_within_group',
-                                        'total_mentions_within_group',
-                                        'unique_mentions_accross_group',
-                                        'total_mentions_accross_group'])
-
-    df1 = df[df['type'] == 1]
-    df2 = df[df['type'] == 2]
-
-    total_mentions_1 =  df1['mentions_username'].count()
-    total_unique_mentions_1 = df1['mentions_username'].nunique()
-    unique_mentions_within_group_1 = df1[df1['mentions_username'].isin(list1)]['mentions_username'].nunique()
-    total_mentions_within_group_1 = df1[df1['mentions_username'].isin(list1)]['mentions_username'].count()
-    unique_mentions_accross_group_1 = df1[df1['mentions_username'].isin(list2)]['mentions_username'].nunique()
-    total_mentions_accross_group_1 = df1[df1['mentions_username'].isin(list2)]['mentions_username'].count()
-
-    df_mentions = df_mentions.append({
-                'group': 'desmog',
-                'total_mentions': total_mentions_1,
-                'total_unique_mentions': total_unique_mentions_1,
-                'unique_mentions_within_group': unique_mentions_within_group_1,
-                'total_mentions_within_group':total_mentions_within_group_1,
-                'unique_mentions_accross_group':unique_mentions_accross_group_1,
-                'total_mentions_accross_group':total_mentions_accross_group_1
-            }, ignore_index=True)
-
-    total_mentions_2 =  df2['mentions_username'].count()
-    total_unique_mentions_2 = df2['mentions_username'].nunique()
-    unique_mentions_within_group_2 = df2[df2['mentions_username'].isin(list2)]['mentions_username'].nunique()
-    total_mentions_within_group_2 = df2[df2['mentions_username'].isin(list2)]['mentions_username'].count()
-    unique_mentions_accross_group_2 = df2[df2['mentions_username'].isin(list1)]['mentions_username'].nunique()
-    total_mentions_accross_group_2 = df2[df2['mentions_username'].isin(list1)]['mentions_username'].count()
-
-    df_mentions = df_mentions.append({
-                'group': 'Scientists',
-                'total_mentions': total_mentions_2,
-                'total_unique_mentions': total_unique_mentions_2,
-                'unique_mentions_within_group': unique_mentions_within_group_2,
-                'total_mentions_within_group':total_mentions_within_group_2,
-                'unique_mentions_accross_group':unique_mentions_accross_group_2,
-                'total_mentions_accross_group':total_mentions_accross_group_2
-            }, ignore_index=True)
-
-    save_data(df_mentions, 'climate_mentions_groups.csv', 0)
-
-    return df_mentions
 
 """SCORE"""
 
 def get_score_cited_domains(df):
 
-    df1 = import_data ('users_websites_expanded.csv')
-    df1['domain_name'] = df1['domain_name'].fillna('no_website')
-
-    df1['username'] = df1['username'].str.lower()
-    df1 = df1.rename(columns = {"domain_name" : "own_website"})
-
-    #compute sum of ratings of other websites with repetition:
-    merged_df = df.merge(df1, how = 'outer', on = ['username'])
-    merged_df = merged_df[merged_df['own_website'] != merged_df['domain_name']]
-
-    merged_df['other_link_count_with_rating'] = 0
-
     for index, row in merged_df.iterrows():
         if row['rating'] < 0 :
-            merged_df.at[index, 'other_link_count_with_rating']= 1
+            merged_df.at[index, 'other_link_count_with_rating'] = 1
         elif row['rating'] > 0: #so if i cite websites with positie ratings it doesn't count
             #merged_df.at[index, 'rating']= 0
-            merged_df.at[index, 'other_link_count_with_rating']= 1 #keep positives
+            merged_df.at[index, 'other_link_count_with_rating'] = 1 #keep positives
 
     score = merged_df.groupby(['username', 'own_website', 'type_x'])[['rating', 'other_link_count_with_rating']].sum().reset_index()
     score = score.rename(columns={"rating": "sum_rating_cited_domains"})
 
     return score
-
-def get_score_own_website(df, rating):
-
-    df1 = import_data ('users_websites_expanded.csv')
-    df1['domain_name'] = df1['domain_name'].fillna('no_website')
-    df1['username'] = df1['username'].str.lower()
-    df1 = df1.rename(columns = {"domain_name" : "own_website"})
-
-    #compute sum of ratings of own website with repetitions:
-    df1[rating]=''
-    df1 = df1.rename(columns = {"own_website" : "domain_name"})
-
-    df_ratings = import_google_sheet ('domain_names_rating')
-    df_ratings = df_ratings[['domain_name', rating]]
-
-    df1.set_index('domain_name', inplace=True)
-    df1.update(df_ratings.set_index('domain_name'))
-    df1 = df1.reset_index()
-    df1[rating] = df1[rating].replace('','unrated')
-    df1 = convert_rating_to_numbers(df1, rating)
-
-    df1 = df1.rename(columns = {"domain_name" : "own_website"})
-    df1 ['initial_score_MBFC'] = df1 ['rating']
-
-    merged_df2 = df.merge(df1, how = 'inner', on = ['username'])
-    merged_df2 = merged_df2[merged_df2['own_website'] == merged_df2['domain_name']]
-
-    merged_df2['own_link_count_with_rating'] = 0
-
-    for index, row in merged_df2.iterrows():
-        if row['rating_y'] != 0 : #problem here
-            merged_df2.at[index, 'own_link_count_with_rating']= 1
-
-    score_2 = merged_df2.groupby(['username', 'own_website', 'type_x', 'initial_score_MBFC'], as_index=False)[['rating_y', 'own_link_count_with_rating']].sum().reset_index()
-    score_2 = score_2.rename(columns={"rating_y": "sum_rating_own_website"})
-
-    return score_2
-
-def aggregate_cited_domains_and_own_website(score, score_2, df):
-
-    final_df = score.merge(score_2, how = 'outer', on = ['username'])
-    final_df = final_df.fillna(0)
-    final_df = final_df.drop(['own_website_y', 'index'], axis=1)
-    final_df = final_df.rename(columns={"own_website_x": "own_website"})
-    final_df['own_link_count_with_rating'] = final_df['own_link_count_with_rating'].astype('int')
-
-    final_df['total_nb_links'] = final_df['own_link_count_with_rating'] + final_df['other_link_count_with_rating']
-
-    for index, row in final_df.iterrows():
-        if row['total_nb_links']>0:
-            final_df.at[index, 'final_score'] = (row['sum_rating_cited_domains'] + row['sum_rating_own_website'])/row['total_nb_links']
-        else:
-            final_df.at[index, 'final_score']=0
-
-    final_df['final_score'] = round(final_df['final_score'],3)
-
-    final_df['total_nb_links'] = final_df['total_nb_links'].astype('int')
-    final_df['initial_score_MBFC'] = final_df['initial_score_MBFC'].astype('int')
-
-    df2= df.drop_duplicates(subset=['username'], keep='first')
-    df2 = df2 [['username', 'followers_count']]
-
-    final_df = final_df.merge(df2, how = 'inner', on = ['username'])
-
-    return final_df
 
 def score(rating):
 
@@ -783,8 +516,6 @@ def score(rating):
     print(df.head(20))
 
     score = get_score_cited_domains (df)
-    score_2 = get_score_own_website(df, rating)
-    final_df = aggregate_cited_domains_and_own_website(score, score_2, df)
 
     #score_df = final_df.drop(['sum_rating_cited_domains', 'sum_rating_own_website', 'other_link_count_with_rating', 'own_link_count_with_rating'], axis=1)
     score_df = final_df.drop(['sum_rating_cited_domains', 'sum_rating_own_website', 'type_x_y'], axis=1)
@@ -929,23 +660,31 @@ def plot_share_ratings():
     #plot_bubbles(df = get_percentage_rating(rating = 'aggregated_rating'),
     plot_bubbles(#df = get_percentage_rating(rating = 'third_aggregation'),
                  df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
-                 rating = 'percentage_negative',
+                 rating = 'share_negative',
                  xlabel = "Share of domains rated\n low and very-low ",
                  title = 'negative_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
 
     plot_bubbles(#df = get_percentage_rating(rating = 'aggregated_rating'),
                  df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
-                 rating = 'percentage_positive',
+                 rating = 'share_positive',
                  xlabel = "Share of domains rated \nmostly-factual, high, very-high ",
                  title = 'positive_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
 
     plot_bubbles(df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
-                 rating = 'percentage_mixed',
+                 rating = 'share_mixed',
                  xlabel = "Share of domains rated as\n mixed ",
                  title = 'mix_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
+
+    plot_bubbles(df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
+                 rating = 'share_negative_weighted_engagement',
+                 xlabel = "Share of positive engagement (like & retweet count) \nfor Tweets with links rated as low or very-low",
+                 title = 'weighted_rating_climate_agg_' + timestr + '.jpg',
+                 stat = 1 )
+
+
 
 def plot_terenary_graph():
 
@@ -1121,8 +860,8 @@ def plot_score ():
 def plot_all():
 
     #plot_share_categories()
-    #plot_share_ratings()
-    plot_engagement_metric()
+    plot_share_ratings()
+    #plot_engagement_metric()
     #plot_share_general ()
     #plot_score()
 
@@ -1143,4 +882,13 @@ def import_google_sheet (filename):
 if __name__ == '__main__':
 
     #get_cited_domain_names_Twitter ()
-    plot_all()
+    #get_percentage_rating(rating = 'third_aggregation')
+    plot_bubbles(df = import_data ('final_score_unweighted_eng.csv'),
+                 rating = 'final_score',
+                 xlabel = "updated score, unweighted by engagement",
+                 title = 'final_score_unweighted' +  '.jpg',
+                 stat = 1 )
+    #plot_all()
+    #get_top_retweeted ('scientist')
+    #get_top_retweeted ('activist')
+    #get_top_retweeted ('delayer')

@@ -46,7 +46,7 @@ def main():
     load_dotenv()
 
     timestr = time.strftime("%Y_%m_%d")
-    path = './data/climate_groups_followers.csv'
+    path = './data/user_metrics_2022_04_23.csv'
 
     list_users, list_users_id = get_list_users_id(data_path = path)
     l = len(list_users_id)
@@ -60,7 +60,7 @@ def main():
                              bearer_token = os.getenv('TWITTER_TOKEN'),
                              filename = os.path.join('.', 'data', 'climate_liked_tweets_test_' + timestr + '.csv'))
 
-      sleep(12)
+      sleep(20)
     toc()
 
 if __name__=="__main__":

@@ -1001,3 +1001,36 @@ def collect_liked_tweets_data(list_individuals, author_id, author_name, bearer_t
 
 
     print("Total liked tweets saved: {}".format(count))
+
+def save_list(list, file_name):
+
+    file_path = os.path.join('.', 'data', file_name)
+    #file_name has to be .txt
+
+    with open(file_path, "wb") as fp:
+        pickle.dump(list, fp)
+
+def read_list(file_name):
+
+    file_path = os.path.join('.', 'data', file_name)
+
+    with open(file_path, "rb") as fp:   # Unpickling
+        b = pickle.load(fp)
+
+    return b
+
+def save_numpy_array(array, file_name):
+
+    file_path = os.path.join('.', 'data', file_name)
+    #filename has to be .npy
+    with open(file_path, 'wb') as f:
+        np.save(f, array)
+
+def read_numpy_array(file_name):
+    file_path = os.path.join('.', 'data', file_name)
+    #filename has to be .npy
+    with open(file_path, 'rb') as f:
+
+        a = np.load(f)
+
+    return a
