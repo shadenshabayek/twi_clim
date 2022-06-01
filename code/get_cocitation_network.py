@@ -5,6 +5,8 @@ import prince
 import plotly.express as px
 import numpy as np
 import time
+import networkx as nx
+
 
 from matplotlib import pyplot as plt
 from pandas.api.types import CategoricalDtype
@@ -47,25 +49,33 @@ def aggregate_domains_per_user():
         df.at[index, 'domain_name']=ast.literal_eval(row['domain_name'])
 
     u = df.groupby(["username", "type"])["domain_name"].apply(list).reset_index(name='list_domain_names')
-    u['list_domain_names'] = u['list_domain_names'].apply(lambda list_items: list({x for l in list_items for x in l}))
+    #u['list_domain_names'] = u['list_domain_names'].apply(lambda list_items: list({x for l in list_items for x in l}))
+    u['list_domain_names'] = u['list_domain_names'].apply(lambda list_items: list(x for l in list_items for x in l))
+    list_platforms = ['twitter.com', 'youtube.com', 'bit.ly', ]
+    u['list_domain_names'] = u['list_domain_names'].apply(lambda list_items: list(x for x in list_items if x not in list_platforms))
     u['len_list'] = u['list_domain_names'].apply(len)
     u = u.sort_values(by = 'type')
-    print(u.head(20))
+    #print(u.head(50))
+    print(u.info())
+    a= u['list_domain_names'].iloc[5]
+    print(u['list_domain_names'].iloc[5])
+    print(len(u['list_domain_names'].iloc[5]))
     return u
 
-def get_cocitation():
+def get_cocitation(lim):
 
     df = aggregate_domains_per_user()
 
     list_individuals = df['username'].tolist()
-    save_list(list_individuals, 'list_individuals_cocitations.txt')
-    print(list_individuals[0:20])
+    #save_list(list_individuals, 'list_individuals_cocitations.txt')
+    print(list_individuals[0:10])
     n = len(list_individuals)
     print('number of individuals', n)
     matrix = np.zeros((n,n))
+    matrix_lim = np.zeros((n,n))
 
     for user_i in list_individuals:
-        for user_j in list_individuals :
+        for user_j in list_individuals:
             if user_i != user_j:
                 i = df.index[df['username'] == user_i]
                 j = df.index[df['username'] == user_j]
@@ -73,8 +83,29 @@ def get_cocitation():
                 matrix[i,j] = len(a)
                 matrix[i,i] = len(df['list_domain_names'].iloc[i[0]])
 
-    save_numpy_array(matrix, 'cocitations.npy')
-    print(matrix)
+                matrix_lim[i,i] = 0
+
+                if matrix[i,j] > lim:
+                    matrix_lim[i,j] = 1
+                else:
+                    matrix_lim[i,j] = 0
+
+    #save_numpy_array(matrix, 'cocitations.npy')
+    #print(matrix)
+    #print(matrix_lim[1,:])
+    s = np.sum(matrix_lim, axis=1)
+    G = nx.from_numpy_matrix(matrix_lim)
+    print(G.nodes)
+    for index, row in df.iterrows():
+        G.nodes[index]['type'] = row['type']
+        G.nodes[index]['username'] = row['username']
+
+    nx.write_gexf(G, "./data/{}_network_climate_cocitations.gexf".format(lim))
+    #print(G.nodes[0]['type'])
+    n_zeros = np.count_nonzero(s==0)
+    print(s)
+    print(len(s))
+    print(n_zeros)
 
     return matrix
 
@@ -82,4 +113,4 @@ def get_cocitation():
 if __name__ == '__main__':
     #get_total_citations_by_user()
     #aggregate_domains_per_user()
-    get_cocitation()
+    get_cocitation(lim = 25)
