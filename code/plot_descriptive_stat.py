@@ -881,14 +881,9 @@ def import_google_sheet (filename):
 
 if __name__ == '__main__':
 
-    #get_cited_domain_names_Twitter ()
-    #get_percentage_rating(rating = 'third_aggregation')
+
     plot_bubbles(df = import_data ('final_score_unweighted_eng.csv'),
                  rating = 'final_score',
                  xlabel = "updated score, unweighted by engagement",
                  title = 'final_score_unweighted' +  '.jpg',
                  stat = 1 )
-    #plot_all()
-    #get_top_retweeted ('scientist')
-    #get_top_retweeted ('activist')
-    #get_top_retweeted ('delayer')
