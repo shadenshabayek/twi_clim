@@ -98,7 +98,6 @@ def get_domains_categories (type):
     df_ratings, df_unrated, total_number_of_links, summary_ratings = get_domains_ratings (type)
 
     df1 = import_google_sheet ('domain_names_rating')
-    #print('number of unique domain names', df1['domain_name'].nunique())
     df1 = df1.replace(r'^\s*$', np.nan, regex=True)
 
     df_unrated['category']=''
@@ -132,7 +131,6 @@ def create_donut(x, y, df, figure_name, title, type_title, colormap):
     fig, ax = plt.subplots(figsize=(6, 15), subplot_kw=dict(aspect="equal"))
 
     df = df
-
     l = len(df[x].to_list())
     list_labels =[]
     for i in range(0,l):
@@ -141,8 +139,6 @@ def create_donut(x, y, df, figure_name, title, type_title, colormap):
 
     ratings = list_labels
     data = df[y].to_list()
-
-
 
     cmap = plt.get_cmap(colormap)
     colors = [cmap(i) for i in np.linspace(0, 1, 10)]
@@ -221,7 +217,3 @@ def create_figures(type_df):
 if __name__ == '__main__':
 
     create_figures(type_df = 'rating')
-    #get_domains_ratings (type = 'all')
-    #get_domains_ratings (type = 'scientist')
-    #get_domains_ratings (type = 'activist')
-    #get_domains_ratings (type = 'delayer')
