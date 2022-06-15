@@ -58,9 +58,6 @@ def aggregate_domains_per_user():
     #print(u.head(50))
     print(u.info())
     print(u['len_list'].describe())
-    #a= u['list_domain_names'].iloc[85]
-    #print(u['list_domain_names'].iloc[85])
-    #print(len(u['list_domain_names'].iloc[85]))
     return u
 
 def get_cocitation(lim):

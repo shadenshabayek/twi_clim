@@ -314,7 +314,7 @@ def play_with_top2vec(model_title):
     return N, color_map, legende_dict
 
 def divide_chunks(l, n):
-    # looping till length l
+
     for i in range(0, len(l), n):
         yield ' '.join(l[i:i + n])
 
@@ -545,7 +545,6 @@ def get_plots_stats(cop26):
 
 if __name__=="__main__":
 
-  print('hello')
   #get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, cop26 = 1)
   #run_top2vec(cop26 = 1)
   get_plots_stats(cop26 = 1)
