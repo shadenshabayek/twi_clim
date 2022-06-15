@@ -16,40 +16,11 @@ from create_twitter_users_lists import get_lists_and_followers
 from utils import (import_data,
                     import_google_sheet,
                     save_data,
-                    save_figure)
-
-def save_list(list, file_name):
-
-    file_path = os.path.join('.', 'data', file_name)
-    #file_name has to be .txt
-
-    with open(file_path, "wb") as fp:
-        pickle.dump(list, fp)
-
-def read_list(file_name):
-
-    file_path = os.path.join('.', 'data', file_name)
-
-    with open(file_path, "rb") as fp:   # Unpickling
-        b = pickle.load(fp)
-
-    return b
-
-def save_numpy_array(array, file_name):
-
-    file_path = os.path.join('.', 'data', file_name)
-    #filename has to be .npy
-    with open(file_path, 'wb') as f:
-        np.save(f, array)
-
-def read_numpy_array(file_name):
-    file_path = os.path.join('.', 'data', file_name)
-    #filename has to be .npy
-    with open(file_path, 'rb') as f:
-
-        a = np.load(f)
-
-    return a
+                    save_figure,
+                    save_list,
+                    read_list,
+                    save_numpy_array,
+                    read_numpy_array)
 
 def add_type(var1, var2, df):
 
@@ -77,6 +48,7 @@ def get_tweets_by_type():
 
 def create_gexf(var1, var2, type_tweet):
 
+    timestr = time.strftime("%Y_%m_%d")
     df = get_tweets_by_type()
     #they have no ratings, so for score, absorbing share_alternative_paltforms
     list_drop = ['sumakhelena', 'yann_a_b', 'israhirsi', 'johnredwood', 'weatherdotus']
@@ -84,7 +56,7 @@ def create_gexf(var1, var2, type_tweet):
     df = df[df[var1].notna()]
     df = df[df['username'] != df[var1]]
     df1 = df[['username', 'type', var1, var2]]
-    save_data(df1, '{}_network.csv'.format(type_tweet), 0)
+    save_data(df1, '{}_network_{}.csv'.format(type_tweet, timestr), 0)
     G = nx.Graph()
 
     G = nx.from_pandas_edgelist(df, 'username', var1, create_using=nx.MultiGraph())
@@ -93,14 +65,14 @@ def create_gexf(var1, var2, type_tweet):
         G.nodes[row[var1]]['type'] = row[var2]
         G.nodes[row['username']]['type'] = row['type']
 
-    #nx.write_gexf(G, "./data/{}_network_climate.gexf".format(type_tweet))
+    nx.write_gexf(G, "./data/{}_network_climate_{}.gexf".format(type_tweet, timestr))
 
     list_nodes = G.nodes
     A = nx.adjacency_matrix(G)
     B = nx.to_numpy_array(G)
 
-    save_list(list_nodes, 'list_nodes_climate_{}.txt'.format(type_tweet))
-    save_numpy_array(B, 'matrix_climate_{}.npy'.format(type_tweet))
+    save_list(list_nodes, 'list_nodes_climate_{}_{}.txt'.format(type_tweet, timestr))
+    save_numpy_array(B, 'matrix_climate_{}_{}.npy'.format(type_tweet, timestr))
 
     return A, B, list_nodes
 
@@ -117,35 +89,25 @@ def assign_color_by_type(type_user):
 
 def update_score(type_tweet):
 
-    #timestr = time.strftime("%Y_%m_%d")
-    timestr = '2022_04_25'
+    timestr = time.strftime("%Y_%m_%d")
+    #timestr = '2022_04_25'
     title = 'climate_percentage_rating_agg_' + timestr + '.csv'
 
     df_initial_score = import_data(title)
 
-    list_nodes = read_list('list_nodes_climate_{}.txt'.format(type_tweet))
+    list_nodes = read_list('list_nodes_climate_{}_{}.txt'.format(type_tweet, timestr))
     print(list_nodes)
-    B = read_numpy_array('matrix_climate_{}.npy'.format(type_tweet))
+    B = read_numpy_array('matrix_climate_{}_{}.npy'.format(type_tweet, timestr))
 
     df_users_scores = pd.DataFrame(list_nodes, columns=['username'])
     df = df_users_scores.merge(df_initial_score, how = 'inner', on = ['username'])
-    # print(df_initial_score.nunique())
-    # print(df_users_scores.nunique())
-    # print(df.nunique())
-    #
-    # list1 = df_users_scores['username'].tolist()
-    # list2 = df['username'].tolist()
-    # list_diff = [x for x in list1 if x not in list2]
-    # print(list_diff)
     print('number of nodes', len(list_nodes))
 
-    #score = df['share_negative_weighted_engagement'].to_numpy()
     score = df['share_negative'].to_numpy()
 
     print(score.shape)
     print(B.shape)
 
-    #B[np.diag_indices_from(B)] /= 1
     np.fill_diagonal(B, 1, wrap=False)
     B_w = B/B.sum(axis=1, keepdims=True)
 
@@ -169,12 +131,6 @@ def update_score(type_tweet):
 
             color = assign_color_by_type(df['type'].iloc[user])
 
-            # ax.scatter(i,
-            #          a,
-            #          color = color,
-            #          linestyle='solid',
-            #          linewidth = 3
-            #          )
             ax.plot(i,
                      a,
                      marker = 'o',
@@ -209,16 +165,17 @@ def create_networks():
 
 def plot_score_update():
 
-    # create_gexf(var1 = 'retweeted_username_within_list',
-    #             var2 = 'type_retweeted',
-    #             type_tweet = 'retweeted')
+    create_gexf(var1 = 'retweeted_username_within_list',
+                var2 = 'type_retweeted',
+                type_tweet = 'retweeted')
 
     update_score(type_tweet = 'retweeted')
 
+def main():
+
+    create_networks()
+    plot_score_update()
 
 if __name__ == '__main__':
 
-    #create_mentions_gexf()
-    #update_score()
-    #create_networks()
-    plot_score_update()
+    main()

@@ -57,17 +57,19 @@ def aggregate_domains_per_user():
     u = u.sort_values(by = 'type')
     #print(u.head(50))
     print(u.info())
-    a= u['list_domain_names'].iloc[5]
-    print(u['list_domain_names'].iloc[5])
-    print(len(u['list_domain_names'].iloc[5]))
+    print(u['len_list'].describe())
+    #a= u['list_domain_names'].iloc[85]
+    #print(u['list_domain_names'].iloc[85])
+    #print(len(u['list_domain_names'].iloc[85]))
     return u
 
 def get_cocitation(lim):
 
+    timestr = time.strftime("%Y_%m_%d")
     df = aggregate_domains_per_user()
 
     list_individuals = df['username'].tolist()
-    #save_list(list_individuals, 'list_individuals_cocitations.txt')
+    save_list(list_individuals, 'list_individuals_cocitations.txt')
     print(list_individuals[0:10])
     n = len(list_individuals)
     print('number of individuals', n)
@@ -75,6 +77,7 @@ def get_cocitation(lim):
     matrix_lim = np.zeros((n,n))
 
     for user_i in list_individuals:
+        print(user_i)
         for user_j in list_individuals:
             if user_i != user_j:
                 i = df.index[df['username'] == user_i]
@@ -90,7 +93,7 @@ def get_cocitation(lim):
                 else:
                     matrix_lim[i,j] = 0
 
-    #save_numpy_array(matrix, 'cocitations.npy')
+    save_numpy_array(matrix, 'cocitations_{}.npy'.format(timestr))
     #print(matrix)
     #print(matrix_lim[1,:])
     s = np.sum(matrix_lim, axis=1)
@@ -100,7 +103,8 @@ def get_cocitation(lim):
         G.nodes[index]['type'] = row['type']
         G.nodes[index]['username'] = row['username']
 
-    nx.write_gexf(G, "./data/{}_network_climate_cocitations.gexf".format(lim))
+
+    nx.write_gexf(G, "./data/{}_network_climate_cocitations_{}.gexf".format(lim, timestr))
     #print(G.nodes[0]['type'])
     n_zeros = np.count_nonzero(s==0)
     print(s)
@@ -113,4 +117,4 @@ def get_cocitation(lim):
 if __name__ == '__main__':
     #get_total_citations_by_user()
     #aggregate_domains_per_user()
-    get_cocitation(lim = 25)
+    get_cocitation(lim = 100)

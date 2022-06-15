@@ -186,7 +186,7 @@ def get_list_delayers():
     df['follower_count'] = df['follower_count'].astype('int64')
     df['following_count'] = df['following_count'].astype('int64')
 
-    """Tony heller is in Desmog but with the twitter account with one underscore, now the second one (two under scores) suspended"""
+    """T. heller is in Desmog but with the twitter account with one underscore, now the second one (two under scores) suspended"""
 
     #print('Desmog:', len(df[df['source'] == 'desmog_climate_database']))
     #print('open_feedback:', len(df[df['source'] == 'open_feedback']))
@@ -196,7 +196,6 @@ def get_list_delayers():
 
     list = df['username'].tolist()
 
-    #print('List Delayers:', len(list), 'users')
     return list, df
 
 '''scientists'''
@@ -228,7 +227,6 @@ def get_list_scientists():
     list = df['username'].tolist()
 
     #print('List Scientists:', len(list), 'users')
-
     return list, df
 
 '''sctivists'''
@@ -295,7 +293,6 @@ def get_list_activists():
         final_list.remove(user)
 
     #print('cliamte activists:', len(final_list))
-
     return final_list
 
 def get_users_followers_activists():
@@ -319,7 +316,6 @@ def get_lists_and_followers():
     list_activists = get_list_activists()
     #print('Number of activists', len(list_activists))
 
-    #df_a = import_data('followers_twitter_activists_climate'  + '.csv')
     df_a = pd.read_csv('./data/followers_twitter_activists_climate.csv', dtype='str')
     df_a = df_a[~df_a['description'].isin(['did not find the account, deleted or suspended'])]
     #df_a['id'] = df_a['id'].astype(str)

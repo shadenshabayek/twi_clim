@@ -19,11 +19,6 @@ def plot_format(ax, plt):
     ax.grid(axis='y')
     handles, labels = ax.get_legend_handles_labels()
 
-    # if suspension == 1 :
-    #     patch = mpatches.Patch(color='pink',
-    #                            label='Suspension Period')
-    #     handles.append(patch)
-
     plt.legend(handles=handles, loc = 'upper left')
 
     #plt.setp(ax.get_xticklabels(), rotation=45)
@@ -247,5 +242,4 @@ def main():
 
 if __name__ == '__main__':
 
-    #main()
-    get_network_stat()
+    main()
