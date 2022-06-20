@@ -133,34 +133,8 @@ def get_hashtags(limit_occurence):
     #df1['hashtags'] = df1['hashtags'].str.lower()
     df1 = df1.reset_index(level=0)
     df1 = df1[df1['hashtag_count']> limit_occurence]
-
+    print(df1['hashtags'].head(20))
     return df1
-
-def plot_stacked_bars(df):
-
-    plt.figure(figsize=(45, 45))
-    ax = plt.subplot(111)
-    ax.bar(df['hashtags'],
-            df['hashtag_count'])
-    plt.xticks(rotation=45, fontsize=30, ha='right')
-    ax.set_ylabel("Frequency", size = 12)
-    #ax.set_title("..", size = 14)
-    x = ['A', 'B', 'C', 'D']
-    # y1 = np.array([10, 20, 10, 30])
-    # y2 = np.array([20, 25, 15, 25])
-    # y3 = np.array([12, 15, 19, 6])
-    # y4 = np.array([10, 29, 13, 19])
-    #
-    # # plot bars in stack manner
-    # plt.bar(x, y1, color='r')
-    # plt.bar(x, y2, bottom=y1, color='b')
-    # plt.bar(x, y3, bottom=y1+y2, color='y')
-    # plt.bar(x, y4, bottom=y1+y2+y3, color='g')
-    # plt.xlabel("Teams")
-    # plt.ylabel("Score")
-    # plt.legend(["Round 1", "Round 2", "Round 3", "Round 4"])
-    # plt.title("Scores by Teams in 4 Rounds")
-    # plt.show()
 
 def get_hashtags_by_type() :
 
@@ -199,6 +173,6 @@ def get_hashtags_by_type() :
 
 if __name__ == '__main__':
 
-    #get_cocitation(lim = 100)
-    #get_hashtags(limit_occurence = 50)
-    get_hashtags_by_type()
+    #get_cocitation(limit_cocitations = 30)
+    get_hashtags(limit_occurence = 50)
+    #get_hashtags_by_type()

@@ -325,7 +325,8 @@ def get_lists_and_followers():
     df_followers = pd.concat([df_s, df_d, df_a], axis=0, ignore_index=True)
     #save_data(df_followers, 'climate_groups_followers.csv', 0)
     print(df_followers.groupby(['source'], as_index = False).size())
-
+    # print(df_followers['username'].nunique())
+    # print(df_followers.columns)
     return list_scientists, list_activists, list_delayers, df_followers
 
 def main():
