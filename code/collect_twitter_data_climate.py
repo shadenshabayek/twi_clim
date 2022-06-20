@@ -44,6 +44,7 @@ def get_users(collection_interupted):
     df['protected'] = df['protected'].astype(str)
     df = df[~df['protected'].isin(['True'])]
     print('number of users, after removing protected accounts', len(df))
+    list_users_all = df['username'].tolist()
 
     if collection_interupted == 0:
 
@@ -62,7 +63,7 @@ def get_users(collection_interupted):
         list2 = df['username'].dropna().unique()
         list_users = [x for x in list2 if x not in list1]
 
-    return list_users
+    return list_users_all, list_users
 
 if __name__=="__main__":
 
@@ -70,7 +71,9 @@ if __name__=="__main__":
     timestr = time.strftime("%Y_%m_%d")
 
     #list_users_all, list_users = get_list_users(collection_interupted = 0)
-    list_users = get_users(collection_interupted = 0)
+    list_users_all, list_users = get_users(collection_interupted = 1)
+    print(list_users)
+
     list_users_tw =['from:' + user for user in list_users]
     print(len(list_users_tw))
 
@@ -78,7 +81,7 @@ if __name__=="__main__":
     for query in list_users_tw:
         print(query)
         collect_twitter_data(
-            list_individuals = list_users,
+            list_individuals = list_users_all,
             query = query,
             start_time = '2021-09-01T23:00:00Z',
             end_time = '2021-12-01T23:00:05Z',
