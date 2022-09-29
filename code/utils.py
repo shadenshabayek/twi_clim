@@ -589,7 +589,7 @@ def save_dict(file_name, dict):
 def save_figure(figure_name):
 
     figure_path = os.path.join('.', 'figures', figure_name)
-    plt.savefig(figure_path, bbox_inches='tight')
+    plt.savefig(figure_path, bbox_inches='tight', dpi = 600)
     #print('The {} figure is saved.'.format(figure_name))
 
 def save_data(df, file_name, append):
@@ -605,14 +605,14 @@ def save_data(df, file_name, append):
 
 ''' Use google sheet via the Google sheet API '''
 
-def import_google_sheet (filename):
+def import_google_sheet (filename, worksheet):
 
     scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_name('./credentials.json', scope)
     client = gspread.authorize(creds)
 
     sheet = client.open(filename)
-    sheet_instance = sheet.get_worksheet(0)
+    sheet_instance = sheet.get_worksheet(worksheet)
 
     records_data = sheet_instance.get_all_records()
     records_df = pd.DataFrame.from_dict(records_data)
@@ -710,7 +710,8 @@ def write_results_user_metrics(json_response, filename, user, source):
                                 'description',
                                 'collection_date',
                                 'collection_method',
-                                'source'], extrasaction='ignore')
+                                'source',
+                                'detail'], extrasaction='ignore')
 
         if 'data'  in json_response:
 
@@ -726,13 +727,22 @@ def write_results_user_metrics(json_response, filename, user, source):
             tweet['source'] = source
             writer.writerow(tweet)
 
+        elif 'errors' in json_response:
+            tweet = {}
+            #print(json_response['errors'])
+            #print(json_response['errors'][0].keys())
+            tweet ['username'] = json_response['errors'][0]['value']
+            tweet ['detail'] = json_response['errors'][0]['detail']
+            #tweet['error'] = tweet['detail']
+            writer.writerow(tweet)
         else:
             pass
-            tweet = {}
-            tweet['username'] = user
-            tweet['description'] = 'did not find the account, deleted or suspended'
-            writer.writerow(tweet)
+            # tweet = {}
+            # tweet['username'] = user
+            # tweet['description'] = 'did not find the account, deleted or suspended'
+            # writer.writerow(tweet)
             print('did not find the account')
+
 
 def get_user_metrics(bearer_token, list, filename, source):
 
@@ -753,7 +763,8 @@ def get_user_metrics(bearer_token, list, filename, source):
                                 'description',
                                 'collection_date',
                                 'collection_method',
-                                'source'], extrasaction='ignore')
+                                'source',
+                                'detail'], extrasaction='ignore')
         if not file_exists:
             writer.writeheader()
 

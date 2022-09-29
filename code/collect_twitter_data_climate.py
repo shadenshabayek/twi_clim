@@ -53,9 +53,9 @@ def get_users(collection_interupted):
 
     elif collection_interupted == 1 :
 
-        timestr = time.strftime("%Y_%m_%d")
-        #timestr = '2022_06_15'
-        df_collected = import_data('twitter_data_climate_tweets_' + timestr  + '.csv')
+        #timestr = time.strftime("%Y_%m_%d")
+        timestr = '2022_07_19'
+        df_collected = import_data('twitter_data_climate_tweets_' + timestr  + '_2.csv')
 
         list1 = df_collected.username.unique().tolist()
         print('Number of users for which the tweets were collected', len(list1))
@@ -68,25 +68,25 @@ def get_users(collection_interupted):
 if __name__=="__main__":
 
     load_dotenv()
-    timestr = time.strftime("%Y_%m_%d")
-
+    #timestr = time.strftime("%Y_%m_%d")
+    timestr ="2022_07_19"
     #list_users_all, list_users = get_list_users(collection_interupted = 0)
     list_users_all, list_users = get_users(collection_interupted = 1)
-    print(list_users)
+    print(len(list_users))
 
     list_users_tw =['from:' + user for user in list_users]
     print(len(list_users_tw))
 
     tic()
     for query in list_users_tw:
-        print(query)
+        #print(query)
         collect_twitter_data(
             list_individuals = list_users_all,
             query = query,
-            start_time = '2021-09-01T23:00:00Z',
-            end_time = '2021-12-01T23:00:05Z',
+            start_time = '2021-07-01T23:00:00Z',
+            end_time = '2022-01-01T23:00:05Z',
             bearer_token= os.getenv('TWITTER_TOKEN'),
-            filename = os.path.join('.', 'data', 'twitter_data_climate_tweets_' + timestr  + '.csv'),
+            filename = os.path.join('.', 'data', 'twitter_data_climate_tweets_' + timestr  + '_2.csv'),
             )
         sleep(3)
     toc()

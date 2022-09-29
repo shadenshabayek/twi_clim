@@ -11,7 +11,7 @@ import gspread
 from matplotlib import pyplot as plt
 
 from utils import (import_data,
-                    #import_google_sheet,
+                    import_google_sheet,
                     save_data,
                     save_figure
                     )
@@ -19,8 +19,21 @@ from create_twitter_users_lists import get_lists_and_followers
 
 def get_tweets_by_type():
 
-    df  = import_data('twitter_data_climate_tweets_2022_03_15.csv')
-    df = df[~df['query'].isin(['f'])]
+    df  = import_data('twitter_data_climate_tweets_2022_07_19.csv')
+    df['username'] = df['username'].str.lower()
+    list_manual = [
+    'israhirsi',
+    'xiuhtezcatl',#not found in tweets cop26 artist
+    'lillyspickup',
+    'jamie_margolin', #not found in tweets cop26
+    'nakabuyehildaf', #not found in tweets cop26
+    'namugerwaleah',#not found in tweets cop26
+    'anunade', #german description but tweeted during COP26
+    'varshprakash',#not found in tweets cop26
+    'jeromefosterii'
+    ]
+    list_2 = ['johnredwood' 'climaterealists' 'tan123' 'netzerowatch' 'electroversenet',
+    'marcelcrok' 'alexnewman_jou']
 
     list_scientists, list_activists, list_delayers, df_followers = get_lists_and_followers()
 
@@ -29,7 +42,7 @@ def get_tweets_by_type():
     df['type'] = np.where(df['username'].isin(list_activists), 'activist', df['type'])
     df['type'] = np.where(df['username'].isin(list_delayers), 'delayer', df['type'])
 
-    print(df[~df['type'].isin(['scientist', 'activist','delayer'])]['username'].unique())
+    df = df[df['type'].isin(['scientist', 'activist','delayer'])]
 
     return df
 
@@ -40,33 +53,69 @@ def get_cited_domain_names_Twitter () :
     df['positive_engagement'] = df['retweet_count'] + df['like_count']
     print(len(df))
     df = df[['username', 'domain_name', 'expanded_urls', 'type_of_tweet', 'id', 'text', 'followers_count', 'type', 'positive_engagement']]
-    df = df[~df['type_of_tweet'].isin(['replied_to'])]
+    #df = df[~df['type_of_tweet'].isin(['replied_to'])]
     for index, row in df.iterrows():
         df.at[index, 'domain_name']=ast.literal_eval(row['domain_name'])
-    print('after removing replies', len(df))
+    #print('after removing replies', len(df))
     df = df.explode('domain_name')
+    df = df.dropna(subset=['domain_name'])
+    print('before removing Twitter links', len(df))
 
     a = ['twitter.com']
 
     df = df[~df['domain_name'].isin(a)]
+    print('after removing Twitter links', len(df))
 
-    df = df.dropna(subset=['domain_name'])
     df['username'] = df['username'].str.lower()
-
+    df1 = df.groupby(['type'], as_index = False).size()
+    print(df['domain_name'].head(30))
     print('There are', df['domain_name'].nunique(), 'unique cited domain names')
     print(df.groupby(['type'], as_index = False).size())
+    print('unique tweets', df['id'].nunique())
+    print('nb urls', len(df['expanded_urls']))
 
-    return df
+    return df, df1
 
+def get_hashtags_by_type() :
+
+    df = get_tweets_by_type()
+
+    df = df[['username', 'hashtags', 'type_of_tweet', 'id', 'text', 'followers_count', 'type']]
+
+    a = len(df[df['type'].isin(['activist'])])
+    b = len(df[df['type'].isin(['delayer'])])
+    c = len(df[df['type'].isin(['scientist'])])
+
+    #df = df[~df['type_of_tweet'].isin(['replied_to'])]
+    for index, row in df.iterrows():
+        df.at[index, 'hashtags']=ast.literal_eval(row['hashtags'])
+
+    df['nb_hashtags'] = df['hashtags'].apply(len)
+    #print(df['nb_hashtags'].head(20))
+
+    print('number of tw with hashtags', len(df[df['nb_hashtags']>0]))
+
+
+    df = df.dropna(subset=['hashtags'])
+    df = df[df['nb_hashtags']>0]
+    print(df.head(40))
+    df_count = df.groupby(['type'], as_index = False).size()
+    print(df_count)
+    print(df.groupby(['type'])['nb_hashtags'].agg('sum'))
+
+    df = df.explode('hashtags')
+    print('There are', df['hashtags'].nunique(), 'unique hastag')
+
+    return df, df_count
 """STAT"""
 
 def get_domains_categories ():
 
-    df1 = import_google_sheet ('domain_names_rating')
+    df1 = import_google_sheet ('domain_names_rating', 0)
     #print('number of unique domain names', df1['domain_name'].nunique())
     df1 = df1.replace(r'^\s*$', np.nan, regex=True)
 
-    df2 = get_cited_domain_names_Twitter ()
+    df2, df3 = get_cited_domain_names_Twitter ()
     df2['category']=''
 
     df2.set_index('domain_name', inplace=True)
@@ -154,10 +203,10 @@ def get_percentage_categories():
 
 def get_domains_ratings (rating):
 
-    df1 = import_google_sheet ('domain_names_rating')
+    df1 = import_google_sheet ('domain_names_rating', 0)
     df1 = df1.replace(r'^\s*$', np.nan, regex=True)
 
-    df2 = get_cited_domain_names_Twitter ()
+    df2, df3 = get_cited_domain_names_Twitter ()
 
     df2[rating] = ''
 
@@ -166,6 +215,23 @@ def get_domains_ratings (rating):
     df2=df2.reset_index()
 
     df2[rating] = df2[rating].replace('','unrated')
+
+    return df2
+
+def get_domains_bias (bias):
+
+    df1 = import_google_sheet ('domain_names_rating', 1)
+    df1 = df1.replace(r'^\s*$', np.nan, regex=True)
+
+    df2, df3 = get_cited_domain_names_Twitter ()
+
+    df2[bias] = ''
+
+    df2.set_index('domain_name', inplace=True)
+    df2.update(df1.set_index('domain_name'))
+    df2=df2.reset_index()
+
+    df2[bias] = df2[bias].replace('','unknown')
 
     return df2
 
@@ -276,6 +342,108 @@ def get_percentage_rating (rating):
     save_data(df_percentage_rating, title, 0)
 
     return df_percentage_rating
+
+def get_percentage_bias (bias):
+
+    #rating = 'MBFC_factual'
+    df =  get_domains_bias (bias)
+
+    df_percentage_bias = pd.DataFrame(columns=['username',
+                                                'type',
+                                                'total',
+                                                'left',
+                                                'right',
+                                                'neutral',
+                                                'questionable',
+                                                'unknown',
+                                                'share_left',
+                                                'share_right',
+                                                'share_neutral',
+                                                'share_questionable',
+                                                'share_unknown'])
+
+    #remove = ['unrated', '(satire)']
+    #df = df[~df[bias].isin(remove)]
+
+    left_bias = ['Left-Center', 'Left']
+    right_bias = ['Right-Center', 'Right']
+    neutral_bias = ['Least Biased', 'Pro-Science']
+    questionable_bias = ['Questionable Sources', 'Satire', 'Conspiracy-Pseudoscience']
+    unknown_bias = ['unknown']
+
+    print('total users with domains', len(df['username'].unique()))
+
+    for user in df['username'].unique():
+
+        type = df[df['username'] == user ].type.unique()[0]
+
+        df_user = df[df['username'] == user ]
+
+        total_with_bias = df_user[bias].count()
+        retweets = df_user[df_user['type_of_tweet'].isin(['retweeted'])][bias].count()
+
+        left = df_user[df_user[bias].isin(left_bias)][bias].count()
+
+        if left > 0 :
+            share_left = left / total_with_bias
+            share_left = round(share_left)
+        else :
+            share_let = 0
+
+        right = df_user[df_user[bias].isin(right_bias)][bias].count()
+
+        if right > 0 :
+            share_right = right / total_with_bias
+            share_right = round(share_right)
+        else:
+            share_right = 0
+
+        neutral = df_user[df_user[bias].isin(neutral_bias)][bias].count()
+
+        if neutral > 0:
+            share_neutral = neutral / total_with_bias
+            share_neutral = round(share_neutral)
+        else:
+            share_neutral = 0
+
+        questionable = df_user[df_user[bias].isin(questionable_bias)][bias].count()
+
+        if questionable > 0:
+            share_questionable = questionable / total_with_bias
+            share_questionable = round(share_questionable)
+        else:
+            share_questionable = 0
+
+
+        unknown = df_user[df_user[bias].isin(unknown_bias)][bias].count()
+
+        if unknown > 0:
+            share_unknown = unknown / total_with_bias
+            share_unknown = round(share_unknown)
+        else:
+            share_neutral = 0
+
+        df_percentage_bias = df_percentage_bias.append({
+                    'username': user,
+                    'type': type,
+                    'total': total_with_bias,
+                    'left': left,
+                    'right': right,
+                    'neutral': neutral,
+                    'questionable': questionable,
+                    'unknown': unknown,
+                    'share_left': share_left,
+                    'share_right': share_right,
+                    'share_neutral': share_neutral,
+                    'share_questionable': share_questionable,
+                    'share_unknown': share_unknown}, ignore_index=True)
+
+    timestr = time.strftime("%Y_%m_%d")
+    title = 'climate_percentage_bias_agg_' + timestr + '.csv'
+
+    save_data(df_percentage_bias, title, 0)
+
+    return df_percentage_bias
 
 def get_percentage_unique_links (rating):
 
@@ -490,7 +658,6 @@ def get_top_retweeted (type):
     df_top = df.groupby(['retweeted_username'], as_index = False).size().sort_values(by='size', ascending=False).head(30)
     print(df_top)
 
-
 """SCORE"""
 
 def get_score_cited_domains(df):
@@ -657,9 +824,10 @@ def plot_share_ratings():
     timestr = time.strftime("%Y_%m_%d")
     #timestr = '2021_11_29' MBFC_reportingquality_scraped
 
-    #plot_bubbles(df = get_percentage_rating(rating = 'aggregated_rating'),
-    plot_bubbles(#df = get_percentage_rating(rating = 'third_aggregation'),
-                 df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
+    plot_bubbles(df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
+    #df = get_percentage_rating(rating = 'MBFC_factual'),
+    #plot_bubbles(#df = get_percentage_rating(rating = 'third_aggregation'),
+                 #df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
                  rating = 'share_negative',
                  xlabel = "Share of domains rated\n low and very-low ",
                  title = 'negative_rating_climate_agg_' + timestr + '.jpg',
@@ -684,7 +852,23 @@ def plot_share_ratings():
                  title = 'weighted_rating_climate_agg_' + timestr + '.jpg',
                  stat = 1 )
 
+    plot_bubbles(df = import_data ('climate_percentage_rating_agg_' + timestr +'.csv'),
+                 rating = 'share_positive_weighted_engagement',
+                 xlabel = "Share of positive engagement (like & retweet count) \nfor Tweets with links rated as low or very-low",
+                 title = 'weighted_rating_climate_agg_' + timestr + '.jpg',
+                 stat = 1 )
 
+def plot_share_bias():
+
+    bias = 'MBFC_bias_scraped'
+
+    timestr = time.strftime("%Y_%m_%d")
+
+    plot_bubbles(df = get_percentage_bias(bias = bias),
+                 rating = 'share_left',
+                 xlabel = "Share of domains with Center Left or Left bias ",
+                 title = 'left_bias_climate_agg_' + timestr + '.jpg',
+                 stat = 1 )
 
 def plot_terenary_graph():
 
@@ -857,33 +1041,108 @@ def plot_score ():
                  title = 'score_climate_test_2' + timestr + '.jpg',
                  stat = 0)
 
+def create_pie_figure(x, df, figure_name, title, labels, colors):
+
+    fig = plt.figure(figsize=(15, 15))
+    ax = fig.add_axes([0,0,1,1])
+    ax.axis('equal')
+
+    #labels= df[x].to_list()
+    categories = df['size'].to_list()
+
+    #cmap = plt.get_cmap('coolwarm')
+    #colors = [cmap(i) for i in np.linspace(0, 1, len(labels))]
+
+    patches, texts, pcts = ax.pie(
+    categories,
+    labels = labels,
+    autopct='%.1f%%',
+    wedgeprops={'linewidth': 3.0, 'edgecolor': 'white'},
+    textprops={'fontsize': 29},
+    colors=colors)
+
+    plt.setp(pcts, color='white', fontweight='bold')
+    save_figure(figure_name)
+
+def plot_pies():
+
+    df, df1 = get_cited_domain_names_Twitter ()
+    df_tw = get_tweets_by_type()
+    df, df_count = get_hashtags_by_type()
+
+    df_tw['type_of_tweet'] = df_tw['type_of_tweet'].fillna('raw_tweet')
+    df2 = df_tw.groupby(['type_of_tweet'], as_index= False).size()
+    df3 = df_tw[df_tw['type'].isin(['scientist', 'activist', 'delayer'])].groupby(['type'], as_index= False).size()
+
+    x_1 = 'type'
+    a = df1[x_1].iloc[0]
+    b = df1[x_1].iloc[1]
+    c = df1[x_1].iloc[2]
+    prefixe = 'Climate '
+
+    labels_1 = [ a + ' \n ({} links)'.format(df1['size'].iloc[0]),
+               b + ' \n ({} links)'.format(df1['size'].iloc[1]),
+                c + ' \n ({} links)'.format(df1['size'].iloc[2])]
+
+    colors_1 = ['gold', 'lightcoral','lightgreen']
+
+    create_pie_figure(x = x_1,
+                      df = df1,
+                      figure_name = 'share_url_clim.jpg',
+                      title = '',
+                      labels = labels_1,
+                      colors = colors_1 )
+
+    create_pie_figure(x = 'type_of_tweet',
+                      df = df2,
+                      figure_name = 'share_type_tweet.jpg',
+                      title = '',
+                      labels = df2['type_of_tweet'].to_list(),
+                      colors = ['plum', 'deepskyblue', 'lightgreen', 'pink'] )
+
+    print(df3)
+    create_pie_figure(x = 'type',
+                      df = df3,
+                      figure_name = 'share_tweet_by_group.jpg',
+                      title = '',
+                      labels = df3['type'].to_list(),
+                      colors = colors_1 )
+
+    create_pie_figure(x = 'type',
+                      df = df_count,
+                      figure_name = 'share_hashtags_by_group.jpg',
+                      title = '',
+                      labels = df_count['type'].to_list(),
+                      colors = colors_1 )
+
 def plot_all():
 
+    plot_pies()
     #plot_share_categories()
     plot_share_ratings()
     #plot_engagement_metric()
     #plot_share_general ()
     #plot_score()
 
-def import_google_sheet (filename):
-
-    scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('./credentials.json', scope)
-    client = gspread.authorize(creds)
-
-    sheet = client.open(filename)
-    sheet_instance = sheet.get_worksheet(0)
-
-    records_data = sheet_instance.get_all_records()
-    records_df = pd.DataFrame.from_dict(records_data)
-
-    return records_df
+# def import_google_sheet (filename):
+#
+#     scope = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+#     creds = ServiceAccountCredentials.from_json_keyfile_name('./credentials.json', scope)
+#     client = gspread.authorize(creds)
+#
+#     sheet = client.open(filename)
+#     sheet_instance = sheet.get_worksheet(0)
+#
+#     records_data = sheet_instance.get_all_records()
+#     records_df = pd.DataFrame.from_dict(records_data)
+#
+#     return records_df
 
 if __name__ == '__main__':
 
 
-    plot_bubbles(df = import_data ('final_score_unweighted_eng.csv'),
-                 rating = 'final_score',
-                 xlabel = "updated score, unweighted by engagement",
-                 title = 'final_score_unweighted' +  '.jpg',
-                 stat = 1 )
+    plot_share_ratings()
+    #get_cited_domain_names_Twitter ()
+    #plot_all()
+    #get_hashtags_by_type()
+    #get_tweets_by_type()

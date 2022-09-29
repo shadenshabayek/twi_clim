@@ -214,6 +214,35 @@ def create_figures(type_df):
                             #colormap = ['green', 'lightgray', 'limegreen', 'limegreen', 'lightgray', 'bisque', 'darkgreen', 'red', 'salmon', 'lightgray'],
                             type_df = type_df)
 
+def create_dataset():
+
+    df = import_google_sheet ('domain_names_rating', 0)
+    df = df.replace(r'^\s*$', np.nan, regex=True)
+
+    df1 = import_data('data.csv')
+    df1 = df1.rename(columns = {'Domain': 'domain_name', 'MBFC factual': 'MBFC_factual'})
+    df1 = df1[['domain_name','MBFC_factual' ]]
+
+    df2 = import_data ('twitter_data_climate_tweets_2022_07_19_2.csv')
+
+    df = df.dropna(subset = ['MBFC_factual'])
+
+
+    print(len(df))
+    print(len(df1))
+
+    list_1 = df['domain_name'].tolist()
+    list_2 = df1['domain_name'].tolist()
+
+    list_manual = [x for x in list_1 if x not in list_2]
+    df_rat = df[df['domain_name'].isin(list_manual)][['domain_name', 'category', 'MBFC_factual']]
+    save_data(df_rat, 'ratings_MBFC_semi_manual.csv', 0)
+    #print(list_manual)
+    print(len(list_manual))
+    print(df.columns)
+    print(df1.columns)
+
 if __name__ == '__main__':
 
-    create_figures(type_df = 'rating')
+    #create_figures(type_df = 'rating')
+    create_dataset()

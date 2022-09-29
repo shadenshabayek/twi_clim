@@ -17,9 +17,11 @@ def get_documents(lim_word_features):
     word_features = FreqDist(chain(*[i for i,j in documents]))
     word_features = list(word_features.keys())[0:lim_word_features]
 
-    return word_features
+    return word_features, documents
 
-def train(number_features, word_features):
+def train(number_features, lim_word_features):
+
+    word_features, documents = get_documents(lim_word_features)
 
     numtrain = int(len(documents) * 90 / 100)
     train_set = [({i:(i in tokens) for i in word_features}, tag) for tokens,tag in documents[:numtrain]]
@@ -32,9 +34,9 @@ def train(number_features, word_features):
 
 def main():
 
-    word_features = get_documents(lim_word_features = 10000)
+    lim_word_features = 20000
     number_features = 10
-    train(number_features, word_features)
+    train(number_features, lim_word_features)
 
 if __name__ == '__main__':
     main()

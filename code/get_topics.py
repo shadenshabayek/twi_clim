@@ -243,11 +243,14 @@ def get_doc_top2vec(cop26):
     return df
 
 def bigrammer(doc):
-    #sentence_stream = doc.split(" ")
-    min_count=20
+
+    min_count=10
     cop26 = 1
-    df = get_doc_top2vec(cop26)
-    docs=df['text_tweets_concat'].values
+    #df = get_doc_top2vec(cop26)
+    df = pd.read_csv('./data/climate_groups_users_metrics_2022_08_16.csv', dtype='str')
+    df = df[df['description'].notna()]
+    docs = df['description'].tolist()
+    #docs=df['text_tweets_concat'].values
 
     sentence_stream = [[x for x in doc.replace('\n',' ').split(" ") if len(x)>2] for doc in docs]
 
@@ -259,21 +262,22 @@ def bigrammer(doc):
 
 def run_top2vec(cop26):
 
-    df = get_doc_top2vec(cop26)
+    #df = get_doc_top2vec(cop26)
+    df = pd.read_csv('./data/climate_groups_users_metrics_2022_08_16.csv', dtype='str')
+    df = df[df['description'].notna()]
 
-    """
-    min_count (int (Optional, default 50)) – Ignores all words with total fre-
-    quency lower than this. For smaller corpora a smaller min_count will be necessary.
-    """
+    #documents=df['description'].tolist()
+    #documents=df['text_tweets_concat'].values
+    #print(type(documents[0]))
 
-    min_count = 20
+    min_count = 10
 
-    model = Top2Vec(documents=df['text_tweets_concat'].values,
+    model = Top2Vec(documents=df['description'].tolist(),
                     embedding_model='doc2vec',
                     speed='learn',
                     tokenizer=bigrammer,
                     min_count=min_count,
-                    hdbscan_args={"min_cluster_size":5})#Shaden replaced 20 by 10 #Setting the min cluster size of HDBscan algorithm to 30 to avoid getting too many clusters
+                    hdbscan_args={"min_cluster_size":10})
 
     timestr = time.strftime("%Y_%m_%d")
     title = './top2vec/climate_topics_{}_cluster_size_5_'.format(cop26) + timestr + '.mod'
@@ -322,31 +326,26 @@ def br(strin):
 
     strinb=strin.split()
     chunks=divide_chunks(strinb, 12)
-    #print (list(chunks))
-    return '<br>'.join(list(chunks))#strin.replace('\n','<br>').replace('. ','.<br>')
+    return '<br>'.join(list(chunks))
 
-def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_title_users, cop26):
+def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_title_users, cop26, df, variable_name, type):
 
     timestr = time.strftime("%Y_%m_%d")
     model = Top2Vec.load(model_title)
 
-    df = get_doc_top2vec(cop26)
     N, color_map, legende_dict = play_with_top2vec(model_title)
 
     umap_args = {
     "n_neighbors": 15,
-    "n_components": 2, # 5 -> 2 for plotting
+    "n_components": 2,
     "metric": "cosine"}
 
-    #umap_model = umap.UMAP(**umap_args).fit(model._get_document_vectors(norm=False))
-    #umap.plot.points(umap_model, labels=model.doc_top)
-    #umap.plot.points(umap_model, cmap="rainbow", labels=np.array(list(map(lambda x: 'Topic ' + str(x) + ' ' +legende_dict[x],model.doc_top))))
     umap_model = umap.UMAP(**umap_args).fit(model._get_document_vectors(norm=False))
 
-    df['text_tweets_concat'] = df['text_tweets_concat'].str[0:2500]
-    df["Description_br"]=df["text_tweets_concat"].apply(br)
+    #df['text_tweets_concat'] = df['text_tweets_concat'].str[0:2500]
+    df["Description_br"]=df[variable_name].apply(br)
 
-    df_px=pd.DataFrame({'x':umap_model.embedding_[:,0],'y':umap_model.embedding_[:,1],'username':df['username'].tolist(), 'type':df['type'].tolist(), 'Topic_Number':list(map(lambda x:str(x),model.doc_top)), 'Topic_Name':list(map(lambda x:'Topic ' + str(x) + ': '+ legende_dict[x],model.doc_top)), "Description":df['Description_br'].tolist()})
+    df_px=pd.DataFrame({'x':umap_model.embedding_[:,0],'y':umap_model.embedding_[:,1],'username':df['username'].tolist(), 'type':df[type].tolist(), 'Topic_Number':list(map(lambda x:str(x),model.doc_top)), 'Topic_Name':list(map(lambda x:'Topic ' + str(x) + ': '+ legende_dict[x],model.doc_top)), "Description":df['Description_br'].tolist()})
 
     title = 'dftop2vec_coordinates_{}_cluster_size_5_'.format(cop26) + timestr + '.csv'
     save_data(df_px, title, 0)
@@ -361,7 +360,7 @@ def get_individual_topics(plot_topics, model_title, figure_title_topics, figure_
             cold.append(mcolors.rgb2hex(color_map[N-1-i]))
 
         df_px ['dummy_column_for_size'] = 3.5
-        symbols = ["8", "7", "17"]
+        symbols = ["8", "7", "17", "18"]
 
         fig1=px.scatter(df_px,
                         x='x',
@@ -502,26 +501,38 @@ def generate_word_cloud(model_title, figure_title, topic):
 def get_plots_stats(cop26):
 
     timestr = time.strftime("%Y_%m_%d")
-    model_title = '/Users/shadenshabayek/Documents/Webclim/Twitter_Climate/top2vec/climate_topics_{}_cluster_size_5_'.format(cop26) + timestr + '.mod'
+    model_title = '/Users/shadenshabayek/Documents/Webclim/webclim_Twitter_Climate/top2vec/climate_topics_{}_cluster_size_5_'.format(cop26) + timestr + '.mod'
 
     N, color_map, legende_dict = play_with_top2vec(model_title = model_title)
 
     figure_title_topics = './top2vec/global_embedding_color_by_topic_{}_cluster_size_5_'.format(cop26) + timestr
     figure_title_users = './top2vec/global_embedding_color_by_user_{}_cluster_size_5_'.format(cop26) + timestr
 
+    #df = get_doc_top2vec(cop26)
+    #variable_name = "text_tweets_concat"
+    #type ="type"
+
+    df = pd.read_csv('./data/climate_groups_users_metrics_2022_08_16.csv', dtype='str')
+    df = df[df['description'].notna()]
+    variable_name = "description"
+    type = "source"
+
     get_individual_topics(plot_topics = 1,
                             model_title = model_title,
                             figure_title_topics = figure_title_topics,
                             figure_title_users = figure_title_users,
-                            cop26 = cop26)
+                            cop26 = cop26,
+                            df = df,
+                            variable_name = variable_name,
+                            type = type)
 
     model_scores_title = 'scores_models_{}_cluster_size_5_'.format(cop26) + timestr + '.csv'
     dendro_title = 'dendro_{}_cluster_size_5_'.format(cop26) + timestr +'.pdf'
 
-    get_hierarchy_of_topics(model_title = model_title,
-                            dendro_title = dendro_title,
-                            model_scores_title = model_scores_title,
-                            cop26 = cop26)
+    # get_hierarchy_of_topics(model_title = model_title,
+    #                         dendro_title = dendro_title,
+    #                         model_scores_title = model_scores_title,
+    #                         cop26 = cop26)
 
     coord_title = 'dftop2vec_coordinates_{}_cluster_size_5_'.format(cop26) + timestr + '.csv'
     figure_title = 'topic_prevelance_by_type_{}_cluster_size_5_'.format(cop26) + timestr + '.jpg'
@@ -530,21 +541,21 @@ def get_plots_stats(cop26):
                                 coord_title = coord_title,
                                 figure_title = figure_title)
 
-    topic_0 = 0
-    figure_title_0 = 'wordcloud_topic_{}_cluster_size_5_'.format(cop26) + str(topic_0) + '_' + timestr + '.jpg'
-    generate_word_cloud(model_title = model_title, figure_title = figure_title_0 , topic = topic_0)
-
-    topic_1 = 1
-    figure_title_1 = 'wordcloud_topic_{}_cluster_size_5_'.format(cop26) + str(topic_1) + '_' + timestr + '.jpg'
-    generate_word_cloud(model_title = model_title, figure_title = figure_title_1 , topic = topic_1)
-
-    if N > 2 :
-        topic_2 = 2
-        figure_title_2 = 'wordcloud_topic_{}_cluster_size_5_'.format(cop26) + str(topic_2) + '_' + timestr + '.jpg'
-        generate_word_cloud(model_title = model_title, figure_title = figure_title_2 , topic = topic_2)
+    # topic_0 = 0
+    # figure_title_0 = 'wordcloud_topic_{}_cluster_size_5_'.format(cop26) + str(topic_0) + '_' + timestr + '.jpg'
+    # generate_word_cloud(model_title = model_title, figure_title = figure_title_0 , topic = topic_0)
+    #
+    # topic_1 = 1
+    # figure_title_1 = 'wordcloud_topic_{}_cluster_size_5_'.format(cop26) + str(topic_1) + '_' + timestr + '.jpg'
+    # generate_word_cloud(model_title = model_title, figure_title = figure_title_1 , topic = topic_1)
+    #
+    # if N > 2 :
+    #     topic_2 = 2
+    #     figure_title_2 = 'wordcloud_topic_{}_cluster_size_5_'.format(cop26) + str(topic_2) + '_' + timestr + '.jpg'
+    #     generate_word_cloud(model_title = model_title, figure_title = figure_title_2 , topic = topic_2)
 
 if __name__=="__main__":
 
   #get_documents(remove_covid = 1, set_topic_climate = 1, remove_mentions = 1, cop26 = 1)
-  #run_top2vec(cop26 = 1)
+  run_top2vec(cop26 = 1)
   get_plots_stats(cop26 = 1)
