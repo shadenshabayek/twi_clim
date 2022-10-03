@@ -23,8 +23,11 @@ __pycache__
 *.blg
 *.bbl
 *.txt
+
+*.png
 *.tex
 *.jpg
+*.pdf
 
 !requirements.txt
 
