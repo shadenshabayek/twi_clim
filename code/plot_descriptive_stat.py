@@ -1141,8 +1141,8 @@ def plot_all():
 if __name__ == '__main__':
 
 
-    plot_share_ratings()
+    #plot_share_ratings()
     #get_cited_domain_names_Twitter ()
     #plot_all()
     #get_hashtags_by_type()
-    #get_tweets_by_type()
+    get_tweets_by_type()
