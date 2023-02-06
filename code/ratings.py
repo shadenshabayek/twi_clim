@@ -90,7 +90,7 @@ def plot_hist(df, var):
 
 def get_domains_ratings (type):
 
-    rating = 'third_aggregation'
+    rating = 'MBFC_factual'
 
     df1 = import_google_sheet ('domain_names_rating')
     df1 = df1.replace(r'^\s*$', np.nan, regex=True)

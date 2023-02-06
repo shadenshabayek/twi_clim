@@ -190,9 +190,6 @@ def clean_tw_handles_delayers():
     list_desmog = [x for x in list_desmog_all if x not in list_desmog_politicians]
     list_openfeedback = df2['twitter_handle'].str.lower().tolist()
 
-    #print(list_desmog)
-    #print(list_openfeedback)
-
     return list_desmog, list_openfeedback, list_desmog_org
 
 def get_users_followers_delayers():
@@ -200,17 +197,13 @@ def get_users_followers_delayers():
     load_dotenv()
     timestr = time.strftime("%Y_%m_%d")
 
-    list_desmog, list_openfeedback, list_desmog_org = clean_tw_handles_delayers()
+    list_desmog, list_desmog_org = clean_tw_handles_delayers()
+    #list_desmog, list_openfeedback, list_desmog_org = clean_tw_handles_delayers()
 
     get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
                     list = list_desmog ,
                     filename = os.path.join('.', 'data', 'followers_twitter_delayers_climate_' + timestr  + '.csv'),
                     source = 'desmog_climate_database_ind')
-
-    # get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
-    #                 list = list_openfeedback ,
-    #                 filename = os.path.join('.', 'data', 'followers_twitter_delayers_climate'  + '.csv'),
-    #                 source = 'open_feedback')
 
     get_user_metrics(bearer_token = os.getenv('TWITTER_TOKEN'),
                     list = list_desmog_org ,
@@ -363,7 +356,7 @@ def get_lists_and_followers():
     df_followers = pd.concat([df_s, df_d, df_a], axis=0, ignore_index=True)
     df_followers['source'] = df_followers['source'].str.replace('desmog_climate_database_ind', 'desmog_climate_database')
     df_followers['source'] = df_followers['source'].str.replace('desmog_climate_database_org', 'desmog_climate_database')
-    
+
     save_data(df_followers, 'climate_groups_users_metrics_2022_08_16.csv', 0)
     print(df_followers.groupby(['source'], as_index = False).size())
 

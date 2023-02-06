@@ -5,8 +5,8 @@ pd.options.mode.chained_assignment = None  # default='warn'
 import plotly.express as px
 import time
 
-from oauth2client.service_account import ServiceAccountCredentials
-import gspread
+#from oauth2client.service_account import ServiceAccountCredentials
+#import gspread
 
 from matplotlib import pyplot as plt
 
@@ -1066,54 +1066,64 @@ def create_pie_figure(x, df, figure_name, title, labels, colors):
 
 def plot_pies():
 
-    df, df1 = get_cited_domain_names_Twitter ()
-    df_tw = get_tweets_by_type()
-    df, df_count = get_hashtags_by_type()
+    #df, df1 = get_cited_domain_names_Twitter ()
+    #df_tw = get_tweets_by_type()
+    #df, df_count = get_hashtags_by_type()
+    df_COP = import_data('twitter_COP26.csv')
+    df_COP['type_of_tweet'] = df_COP['type_of_tweet'].fillna('raw_tweet')
+    df_COP = df_COP.groupby(['type_of_tweet'], as_index= False).size()
 
-    df_tw['type_of_tweet'] = df_tw['type_of_tweet'].fillna('raw_tweet')
-    df2 = df_tw.groupby(['type_of_tweet'], as_index= False).size()
-    df3 = df_tw[df_tw['type'].isin(['scientist', 'activist', 'delayer'])].groupby(['type'], as_index= False).size()
+    #df_tw['type_of_tweet'] = df_tw['type_of_tweet'].fillna('raw_tweet')
+    #df2 = df_tw.groupby(['type_of_tweet'], as_index= False).size()
+    #df3 = df_tw[df_tw['type'].isin(['scientist', 'activist', 'delayer'])].groupby(['type'], as_index= False).size()
 
-    x_1 = 'type'
-    a = df1[x_1].iloc[0]
-    b = df1[x_1].iloc[1]
-    c = df1[x_1].iloc[2]
-    prefixe = 'Climate '
+    # x_1 = 'type'
+    # a = df1[x_1].iloc[0]
+    # b = df1[x_1].iloc[1]
+    # c = df1[x_1].iloc[2]
+    # prefixe = 'Climate '
+    #
+    # labels_1 = [ a + ' \n ({} links)'.format(df1['size'].iloc[0]),
+    #            b + ' \n ({} links)'.format(df1['size'].iloc[1]),
+    #             c + ' \n ({} links)'.format(df1['size'].iloc[2])]
+    #
+    # colors_1 = ['gold', 'lightcoral','lightgreen']
+    #
+    # create_pie_figure(x = x_1,
+    #                   df = df1,
+    #                   figure_name = 'share_url_clim.jpg',
+    #                   title = '',
+    #                   labels = labels_1,
+    #                   colors = colors_1 )
 
-    labels_1 = [ a + ' \n ({} links)'.format(df1['size'].iloc[0]),
-               b + ' \n ({} links)'.format(df1['size'].iloc[1]),
-                c + ' \n ({} links)'.format(df1['size'].iloc[2])]
-
-    colors_1 = ['gold', 'lightcoral','lightgreen']
-
-    create_pie_figure(x = x_1,
-                      df = df1,
-                      figure_name = 'share_url_clim.jpg',
-                      title = '',
-                      labels = labels_1,
-                      colors = colors_1 )
+    # create_pie_figure(x = 'type_of_tweet',
+    #                   df = df2,
+    #                   figure_name = 'share_type_tweet.jpg',
+    #                   title = '',
+    #                   labels = df2['type_of_tweet'].to_list(),
+    #                   colors = ['plum', 'deepskyblue', 'lightgreen', 'pink'] )
 
     create_pie_figure(x = 'type_of_tweet',
-                      df = df2,
-                      figure_name = 'share_type_tweet.jpg',
+                      df = df_COP,
+                      figure_name = 'share_type_tweet_COP26.jpg',
                       title = '',
-                      labels = df2['type_of_tweet'].to_list(),
+                      labels = df_COP['type_of_tweet'].to_list(),
                       colors = ['plum', 'deepskyblue', 'lightgreen', 'pink'] )
 
-    print(df3)
-    create_pie_figure(x = 'type',
-                      df = df3,
-                      figure_name = 'share_tweet_by_group.jpg',
-                      title = '',
-                      labels = df3['type'].to_list(),
-                      colors = colors_1 )
-
-    create_pie_figure(x = 'type',
-                      df = df_count,
-                      figure_name = 'share_hashtags_by_group.jpg',
-                      title = '',
-                      labels = df_count['type'].to_list(),
-                      colors = colors_1 )
+    # print(df3)
+    # create_pie_figure(x = 'type',
+    #                   df = df3,
+    #                   figure_name = 'share_tweet_by_group.jpg',
+    #                   title = '',
+    #                   labels = df3['type'].to_list(),
+    #                   colors = colors_1 )
+    #
+    # create_pie_figure(x = 'type',
+    #                   df = df_count,
+    #                   figure_name = 'share_hashtags_by_group.jpg',
+    #                   title = '',
+    #                   labels = df_count['type'].to_list(),
+    #                   colors = colors_1 )
 
 def plot_all():
 
@@ -1145,4 +1155,5 @@ if __name__ == '__main__':
     #get_cited_domain_names_Twitter ()
     #plot_all()
     #get_hashtags_by_type()
-    get_tweets_by_type()
+    #get_tweets_by_type()
+    plot_pies()
